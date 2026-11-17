@@ -159,7 +159,7 @@ and a **Portainer stack** managed by `apps.sh`. Run these over SSH.
 
 ```bash
 cd /volume3/docker/self-hosted
-git clone https://github.com/rodrigocoelho2/ledger.git Ledger
+git clone https://github.com/rodrigocoelho2/Ledger.git Ledger
 sudo bash Ledger/deploy/prometheus-setup.sh
 ```
 
@@ -169,7 +169,7 @@ sudo bash Ledger/deploy/prometheus-setup.sh
 
 ```bash
 cd /volume3/docker/self-hosted
-git clone https://github.com/rodrigocoelho2/ledger.git Ledger
+git clone https://github.com/rodrigocoelho2/Ledger.git Ledger
 cd Ledger
 cp .env.example .env
 nano .env
