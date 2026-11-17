@@ -1,0 +1,25 @@
+CREATE TABLE [dbo].[User]
+(
+    [UserID]        BIGINT           IDENTITY (1, 1) NOT NULL,
+    [UserUniqueID]  UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_User_UserUniqueID] DEFAULT (NEWID()),
+    [Username]      NVARCHAR (32)    COLLATE Latin1_General_CI_AS NOT NULL,
+    [PasswordHash]  NVARCHAR (200)   NOT NULL,
+    [IsAdmin]       BIT              NOT NULL CONSTRAINT [DF_User_IsAdmin] DEFAULT (0),
+    [SecurityStamp] NVARCHAR (64)    NOT NULL,
+    [CreatedAt]     DATETIME2 (3)    NOT NULL CONSTRAINT [DF_User_CreatedAt] DEFAULT (SYSUTCDATETIME()),
+    [LastLoginAt]   DATETIME2 (3)    NULL,
+    [DiscordID]     VARCHAR (32)     NULL,
+    [DiscordName]   NVARCHAR (64)    NULL,
+    CONSTRAINT [PK_User] PRIMARY KEY CLUSTERED ([UserID] ASC),
+    CONSTRAINT [UQ_User_UserUniqueID] UNIQUE NONCLUSTERED ([UserUniqueID] ASC),
+    CONSTRAINT [UQ_User_Username] UNIQUE NONCLUSTERED ([Username] ASC)
+);
+GO
+
+-- One Discord account signs in to one person at most.
+CREATE UNIQUE NONCLUSTERED INDEX [UX_User_DiscordID]
+    ON [dbo].[User] ([DiscordID] ASC) WHERE [DiscordID] IS NOT NULL;
+GO
+
+EXECUTE sp_addextendedproperty @name = N'MS_Description', @value = N'The people who sign in. Usernames are unique ignoring case; the first one is the admin. DiscordID (with the Discord name it had) is set when the person links Discord in Settings, or signs up with Discord, and then signs in to this user. A user made with Discord has an empty PasswordHash (it never verifies) until a password is set. Every account, entry, project and spending cap belongs to one user.',
+    @level0type = N'SCHEMA', @level0name = N'dbo', @level1type = N'TABLE', @level1name = N'User';

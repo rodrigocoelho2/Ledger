@@ -1,0 +1,83 @@
+<Project Sdk="Microsoft.Build.Sql/2.1.0">
+
+  <!-- SQL Server database of Ledger: the tables and the stored procedures the WebApi calls. Builds to Ledger.Database.dacpac,
+       which the db-deploy container publishes on every deploy (creates the database or brings it up to date) and which
+       also creates the app's own login (AppUser / AppPassword), so the WebApi never connects as sa.
+       Every script is listed below (no wildcards), so Visual Studio shows them with either SSDT flavour;
+       adding a script through Solution Explorer adds its line here. -->
+  <PropertyGroup>
+    <Name>Ledger.Database</Name>
+    <DSP>Microsoft.Data.Tools.Schema.Sql.Sql160DatabaseSchemaProvider</DSP>
+    <ModelCollation>1033, CI</ModelCollation>
+    <DefaultCollation>SQL_Latin1_General_CP1_CI_AS</DefaultCollation>
+    <TargetDatabaseSet>True</TargetDatabaseSet>
+    <EnableDefaultSqlItems>false</EnableDefaultSqlItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="Tables\" />
+    <Folder Include="StoredProcedures\" />
+    <Folder Include="StoredProcedures\Accounts\" />
+    <Folder Include="StoredProcedures\Caps\" />
+    <Folder Include="StoredProcedures\Entries\" />
+    <Folder Include="StoredProcedures\Projects\" />
+    <Folder Include="StoredProcedures\Settings\" />
+    <Folder Include="StoredProcedures\Users\" />
+    <Folder Include="Scripts\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Build Include="Tables\dbo.Account.sql" />
+    <Build Include="Tables\dbo.Entry.sql" />
+    <Build Include="Tables\dbo.MonthCap.sql" />
+    <Build Include="Tables\dbo.Project.sql" />
+    <Build Include="Tables\dbo.Setting.sql" />
+    <Build Include="Tables\dbo.User.sql" />
+    <Build Include="StoredProcedures\Accounts\dbo.AccountDelete.sql" />
+    <Build Include="StoredProcedures\Accounts\dbo.AccountList.sql" />
+    <Build Include="StoredProcedures\Accounts\dbo.AccountReorder.sql" />
+    <Build Include="StoredProcedures\Accounts\dbo.AccountSave.sql" />
+    <Build Include="StoredProcedures\Caps\dbo.CapList.sql" />
+    <Build Include="StoredProcedures\Caps\dbo.CapSave.sql" />
+    <Build Include="StoredProcedures\Entries\dbo.EntryDelete.sql" />
+    <Build Include="StoredProcedures\Entries\dbo.EntryGet.sql" />
+    <Build Include="StoredProcedures\Entries\dbo.EntryImport.sql" />
+    <Build Include="StoredProcedures\Entries\dbo.EntryList.sql" />
+    <Build Include="StoredProcedures\Entries\dbo.EntrySave.sql" />
+    <Build Include="StoredProcedures\Entries\dbo.EntrySuggest.sql" />
+    <Build Include="StoredProcedures\Entries\dbo.LedgerReset.sql" />
+    <Build Include="StoredProcedures\Projects\dbo.ProjectDelete.sql" />
+    <Build Include="StoredProcedures\Projects\dbo.ProjectList.sql" />
+    <Build Include="StoredProcedures\Projects\dbo.ProjectSave.sql" />
+    <Build Include="StoredProcedures\Settings\dbo.SettingSave.sql" />
+    <Build Include="StoredProcedures\Users\dbo.UserCount.sql" />
+    <Build Include="StoredProcedures\Users\dbo.UserCreate.sql" />
+    <Build Include="StoredProcedures\Users\dbo.UserDelete.sql" />
+    <Build Include="StoredProcedures\Users\dbo.UserGet.sql" />
+    <Build Include="StoredProcedures\Users\dbo.UserGetByDiscord.sql" />
+    <Build Include="StoredProcedures\Users\dbo.UserGetByName.sql" />
+    <Build Include="StoredProcedures\Users\dbo.UserList.sql" />
+    <Build Include="StoredProcedures\Users\dbo.UserSetDiscord.sql" />
+    <Build Include="StoredProcedures\Users\dbo.UserSetPassword.sql" />
+    <Build Include="StoredProcedures\Users\dbo.UserTouchLogin.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PostDeploy Include="Scripts\Script.PostDeployment.sql" />
+    <None Include="Scripts\deploy.sh" />
+    <None Include="Dockerfile" />
+  </ItemGroup>
+
+  <!-- The login the WebApi connects with. deploy.sh passes both (/v:AppUser=… /v:AppPassword=…); an empty password skips it. -->
+  <ItemGroup>
+    <SqlCmdVariable Include="AppUser">
+      <DefaultValue>ledger</DefaultValue>
+      <Value>$(SqlCmdVar__1)</Value>
+    </SqlCmdVariable>
+    <SqlCmdVariable Include="AppPassword">
+      <DefaultValue></DefaultValue>
+      <Value>$(SqlCmdVar__2)</Value>
+    </SqlCmdVariable>
+  </ItemGroup>
+
+</Project>

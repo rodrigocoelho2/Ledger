@@ -1,0 +1,9 @@
+{
+  "Website": {
+    "SetupKey": ""
+  },
+  "LedgerApi": {
+    "Url": "http://127.0.0.1:5101/",
+    "ApiKey": "devkey"
+  }
+}

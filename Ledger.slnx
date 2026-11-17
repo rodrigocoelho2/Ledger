@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="Ledger.Database/Ledger.Database.sqlproj" Type="42ea0dbd-9cf1-443e-919e-be9c484e4577" />
+  <Project Path="Ledger.Library/Ledger.Library.csproj" />
+  <Project Path="Ledger.Sdk/Ledger.Sdk.csproj" />
+  <Project Path="Ledger.UnitTest/Ledger.UnitTest.csproj" />
+  <Project Path="Ledger.WebApi/Ledger.WebApi.csproj" />
+  <Project Path="Ledger.Website/Ledger.Website.csproj" />
+</Solution>
