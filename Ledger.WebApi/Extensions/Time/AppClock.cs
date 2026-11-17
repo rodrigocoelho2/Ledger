@@ -4,9 +4,9 @@ using Ledger.WebApi.Features;
 namespace Ledger.WebApi.Extensions.Time;
 
 /// <summary>
-/// The wall clock in the app's time zone (<see cref="LedgerOptions.TimeZone"/>). Ledger keeps every instant in UTC (as the
-/// broker sends it) and turns it into a local day here, so "today", a month of dividends and the chart's days line up
-/// with the calendar on your wall.
+/// The wall clock in the app's time zone (<see cref="LedgerOptions.TimeZone"/>). Ledger keeps every instant in UTC and
+/// turns it into a local day here, so "today", "this month" and the day a new entry gets line up with the calendar on
+/// your wall.
 /// </summary>
 internal interface IAppClock
 {

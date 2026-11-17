@@ -67,13 +67,17 @@ internal static class ProjectMath
             EntryCount = entries.Count,
             TargetSale = project.TargetSale,
             WorksBudget = project.WorksBudget,
+            AgreedPrice = project.AgreedPrice,
             Phases = Phases(costs, firstDay, saleDay, today),
             Split = Split(costs, invested, sold, isSold),
         };
 
         if (!isSold && project.TargetSale is { } target)
         {
-            var projected = invested + Math.Max(0m, (project.WorksBudget ?? 0m) - worksSpent);
+            // What is in, plus the part of the agreed price not paid yet, plus what is left of the works budget.
+            var projected = invested
+                + Math.Max(0m, (project.AgreedPrice ?? 0m) - dto.PurchasePrice)
+                + Math.Max(0m, (project.WorksBudget ?? 0m) - worksSpent);
             dto.ProjectedCost = projected;
             dto.TargetResult = target - projected;
             dto.TargetReturn = projected > 0 ? OverviewMath.Share(target - projected, projected) : null;

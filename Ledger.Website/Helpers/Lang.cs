@@ -176,6 +176,40 @@ public sealed class Lang
         _ => T("Personal", "Pessoal"),
     };
 
+    /// <summary>The first day of a month written as "2026-10".</summary>
+    /// <param name="month">The month (yyyy-MM).</param>
+    /// <returns>The first day; today's month when the text isn't one.</returns>
+    public static DateOnly MonthStart(string? month) =>
+        DateOnly.TryParseExact((month ?? string.Empty) + "-01", "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var day)
+            ? day
+            : new DateOnly(Clock.Today.Year, Clock.Today.Month, 1);
+
+    /// <summary>What an entry did to the money, with its sign: "+€1,850.00", "−€9.80", or bare for a transfer.</summary>
+    /// <param name="kind">The kind of entry.</param>
+    /// <param name="amount">The amount (always positive).</param>
+    /// <returns>The text.</returns>
+    public string Entry(EntryKind kind, decimal amount) => kind switch
+    {
+        EntryKind.Inflow => "+" + Money(amount),
+        EntryKind.Outflow => "−" + Money(amount),
+        _ => Money(amount),
+    };
+
+    /// <summary>The CSS class of an entry's amount.</summary>
+    /// <param name="kind">The kind of entry.</param>
+    /// <returns>"in", "outflow" or "move".</returns>
+    public static string Tone(EntryKind kind) => kind switch
+    {
+        EntryKind.Inflow => "in",
+        EntryKind.Outflow => "outflow",
+        _ => "move",
+    };
+
+    /// <summary>The CSS class of an account's kind.</summary>
+    /// <param name="kind">The kind of account.</param>
+    /// <returns>"kind-current", "kind-savings"…</returns>
+    public static string Tick(AccountKind kind) => "kind-" + kind.ToString().ToLowerInvariant();
+
     /// <summary>A count with its noun: "1 entry", "29 entries".</summary>
     /// <param name="count">The count.</param>
     /// <param name="englishOne">The English singular.</param>

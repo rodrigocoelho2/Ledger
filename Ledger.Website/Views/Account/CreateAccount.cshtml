@@ -1,10 +1,7 @@
 @model Ledger.Website.Model.Account.AccountPageModel
 @{
-    ViewData["Title"] = Model.IsFirstAccount ? "Set up Ledger" : "Create account";
+    ViewData["Title"] = Model.IsFirstAccount ? L.T("Set up Ledger", "Configurar o Ledger") : L.T("Create account", "Criar conta");
     ViewData["Tab"] = "create";
-}
-@section Head {
-    <link rel="stylesheet" href="~/css/public.css" asp-append-version="true" />
 }
 
 <div class="au">
@@ -15,66 +12,65 @@
             @Html.AntiForgeryToken()
             <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
 
-            <div>
-                <h1>@(Model.IsFirstAccount ? "Set up Ledger" : "Create your account")</h1>
-                <p class="muted">@(Model.IsFirstAccount ? "The first account is the admin." : "One account per person: each has its own portfolio.")</p>
-            </div>
+            <h1>@(Model.IsFirstAccount ? L.T("Set up Ledger", "Configurar o Ledger") : L.T("Create your account", "Cria a tua conta"))</h1>
+            <p class="lead">@(Model.IsFirstAccount ? L.T("The first account is the admin.", "A primeira conta é a de admin.") : L.T("One account per person: each has its own ledger.", "Uma conta por pessoa: cada uma tem o seu livro."))</p>
 
             <partial name="_AccountCard" model="Model" />
 
             @if (Model.NeedsSetupKey)
             {
                 <label class="field">
-                    Setup key
+                    <span>@L.T("Setup key", "Chave de configuração")</span>
                     <span class="au-in">
                         @Icons.Get("key")
                         <input name="setupKey" type="password" autocomplete="off" required />
                     </span>
-                    <small class="hint">LEDGER_SETUP_KEY, in the .env file next to docker-compose.yml.</small>
+                    <small class="hint">@L.T("LEDGER_SETUP_KEY, in the .env file next to docker-compose.yml.", "LEDGER_SETUP_KEY, no ficheiro .env ao lado do docker-compose.yml.")</small>
                 </label>
             }
 
             <label class="field">
-                User name
+                <span>@L.T("User name", "Nome de utilizador")</span>
                 <span class="au-in">
                     @Icons.Get("user")
                     <input name="userName" type="text" value="@Model.UserName" autocomplete="username" autocapitalize="none" spellcheck="false" pattern="[A-Za-z0-9._\-]{3,32}" required autofocus />
                 </span>
+                <small class="hint">@L.T("3–32 letters, numbers, dots, dashes or underscores.", "3–32 letras, números, pontos, hífenes ou underscores.")</small>
             </label>
 
             <label class="field">
-                Password
+                <span>@L.T("Password", "Palavra-passe")</span>
                 <span class="au-in">
                     @Icons.Get("lock")
                     <input id="password" name="password" type="password" autocomplete="new-password" minlength="@Model.MinPasswordLength" required />
-                    <button type="button" class="password-toggle" data-for="password" aria-pressed="false" aria-label="Show password">@Icons.Get("eye")</button>
+                    <button type="button" class="password-toggle" data-for="password" aria-pressed="false" data-show="@L.T("Show password", "Mostrar palavra-passe")" data-hide="@L.T("Hide password", "Esconder palavra-passe")" aria-label="@L.T("Show password", "Mostrar palavra-passe")">@Icons.Get("eye")</button>
                 </span>
             </label>
 
             <label class="field">
-                Password again
+                <span>@L.T("Password again", "Repetir palavra-passe")</span>
                 <span class="au-in">
                     @Icons.Get("lock")
                     <input name="confirmPassword" type="password" autocomplete="new-password" minlength="@Model.MinPasswordLength" required />
                 </span>
             </label>
 
-            <label class="au-check">
-                <input type="checkbox" name="remember" value="true" checked="@(Model.Remember ? "checked" : null)" />
-                <span>Keep me signed in on this device <small class="muted">(@Model.RememberDays days)</small></span>
+            <label class="check">
+                <input type="checkbox" name="remember" value="true" checked="@Model.Remember" />
+                <span>@L.T("Keep me signed in on this device", "Manter a sessão neste dispositivo") <small class="faint">(@L.Count(Model.RememberDays, "day", "days", "dia", "dias"))</small></span>
             </label>
 
-            <button class="btn wide" type="submit">@(Model.IsFirstAccount ? "Set up Ledger" : "Create account") @Icons.Get("arrow")</button>
+            <button class="btn primary wide" type="submit">@(Model.IsFirstAccount ? L.T("Set up Ledger", "Configurar o Ledger") : L.T("Create account", "Criar conta")) @Icons.Get("arrow")</button>
 
             @if (Model.DiscordEnabled && !Model.IsFirstAccount)
             {
-                <div class="au-or" aria-hidden="true"><span>or</span></div>
-                <a class="btn wide discord" href="/sign-in/discord?returnUrl=@Uri.EscapeDataString(Model.ReturnUrl)"><span class="discord-mark" aria-hidden="true"></span>Sign up with Discord</a>
+                <div class="au-or" aria-hidden="true"><span>@L.T("or", "ou")</span></div>
+                <a class="btn wide" href="/sign-in/discord?returnUrl=@Uri.EscapeDataString(Model.ReturnUrl)"><span class="discord-mark" aria-hidden="true"></span>@L.T("Sign up with Discord", "Registar com o Discord")</a>
             }
 
             @if (!Model.IsFirstAccount)
             {
-                <p class="au-fine">Already have one? <a href="/sign-in">Sign in</a></p>
+                <p class="au-fine">@L.T("Already have one?", "Já tens conta?") <a href="/sign-in">@L.T("Sign in", "Entrar")</a></p>
             }
         </form>
     </main>

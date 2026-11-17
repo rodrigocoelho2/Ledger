@@ -35,8 +35,8 @@ services:
         max-size: "5m"
         max-file: "3"
 
-  # The engine: accounts, the IGDB catalog, libraries and friends. Not published on any port: only the website reaches
-  # it, over the stack's own network. It reaches out to Twitch and IGDB, and to Steam, when the credentials are set.
+  # The engine: users, accounts, entries, the overview, the rental and the projects, the files. Not published on any
+  # port: only the website reaches it, over the stack's own network. It never reaches out to the internet.
   webapi:
     build:
       context: .
@@ -53,21 +53,16 @@ services:
     environment:
       ConnectionStrings__Ledger: "Server=${SQL_SERVER:-shared-sql},1433;Database=Ledger;User Id=ledger;Password=${SQL_APP_PASSWORD};TrustServerCertificate=True"
       Ledger__ApiKey: ${LEDGER_API_KEY:?Set LEDGER_API_KEY in .env}
-      # IGDB, through a Twitch application (https://dev.twitch.tv/console). Empty: the short built-in list of games.
-      Ledger__IgdbClientId: ${IGDB_CLIENT_ID:-}
-      Ledger__IgdbClientSecret: ${IGDB_CLIENT_SECRET:-}
-      # The Steam import (Settings → Import from Steam): a Steam Web API key. Empty: the import is off.
-      Ledger__SteamApiKey: ${STEAM_API_KEY:-}
-      # Wishlist prices and alerts (IsThereAnyDeal). Empty: no prices.
-      Ledger__ItadApiKey: ${ITAD_API_KEY:-}
-      Ledger__PriceCountry: ${LEDGER_PRICE_COUNTRY:-PT}
+      Ledger__TimeZone: ${TIME_ZONE:-Europe/Lisbon}
+      # true = the sample ledger in memory (user "demo", password "ledger-demo"); no database is touched.
+      Ledger__DemoMode: ${LEDGER_DEMO_MODE:-false}
       DOTNET_gcServer: "0"
       TZ: ${TIME_ZONE:-Europe/Lisbon}
     cpus: ${LEDGER_CPUS:-1}
     mem_limit: ${LEDGER_WEBAPI_MEMORY:-384m}
     logging: *logging
 
-  # Ledger (the app): http://<nas-ip>:5098 — and https://ledger.<your-domain> through Nginx Proxy Manager.
+  # Ledger (the app): http://<nas-ip>:5100 — and https://ledger.<your-domain> through Nginx Proxy Manager.
   website:
     build:
       context: .
@@ -78,7 +73,7 @@ services:
     depends_on:
       - webapi
     ports:
-      - "${LEDGER_PORT:-5098}:8080"
+      - "${LEDGER_PORT:-5100}:8080"
     environment:
       LedgerApi__Url: http://webapi:8080/
       LedgerApi__ApiKey: ${LEDGER_API_KEY:?Set LEDGER_API_KEY in .env}

@@ -211,6 +211,7 @@ public sealed class EntriesController(LedgerClient apiClient, Lang lang) : Websi
         var quick = await Api.EntryQuickAsync(UserId, text ?? string.Empty);
         return new
         {
+            quick.Understood,
             quick.Name,
             Amount = quick.Amount.ToString("0.00", CultureInfo.InvariantCulture),
             AmountText = L.Money(quick.Amount),
@@ -423,22 +424,23 @@ public sealed class ProjectsController(LedgerClient apiClient, Lang lang) : Webs
             page.Data = await Api.ProjectListAsync(UserId));
     }
 
-    /// <summary>Adds a project, or changes its name, target sale price and works budget.</summary>
+    /// <summary>Adds a project, or changes its name, agreed price, target sale price and works budget.</summary>
     /// <param name="id">The project to change (empty: a new one).</param>
     /// <param name="name">The name.</param>
     /// <param name="targetSale">The price hoped for, as typed (empty: none).</param>
     /// <param name="worksBudget">What the works should cost, as typed (empty: none).</param>
+    /// <param name="agreedPrice">The price agreed with the seller, as typed (empty: none).</param>
     /// <returns>Fine, or the messages to show.</returns>
     [HttpPost("/projects/save")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Save([FromForm] string? id, [FromForm] string? name, [FromForm] string? targetSale, [FromForm] string? worksBudget)
+    public async Task<IActionResult> Save([FromForm] string? id, [FromForm] string? name, [FromForm] string? targetSale, [FromForm] string? worksBudget, [FromForm] string? agreedPrice)
     {
-        if (!Optional(targetSale, out var target) || !Optional(worksBudget, out var budget))
+        if (!Optional(targetSale, out var target) || !Optional(worksBudget, out var budget) || !Optional(agreedPrice, out var agreed))
         {
-            return Invalid("TargetSale", L.T("The target and the budget must be numbers.", "O preço alvo e o orçamento têm de ser números."));
+            return Invalid("TargetSale", L.T("The prices and the budget must be numbers.", "Os preços e o orçamento têm de ser números."));
         }
 
-        return await AnswerAsync(() => Api.ProjectSaveAsync(new ProjectSaveRequest { UserId = UserId, Id = id, Name = name, TargetSale = target, WorksBudget = budget }));
+        return await AnswerAsync(() => Api.ProjectSaveAsync(new ProjectSaveRequest { UserId = UserId, Id = id, Name = name, TargetSale = target, WorksBudget = budget, AgreedPrice = agreed }));
 
         static bool Optional(string? text, out decimal? value)
         {

@@ -8,6 +8,7 @@ using Microsoft.Extensions.Options;
 using Ledger.Sdk;
 using Ledger.Sdk.Models;
 using Ledger.Website.Model.Account;
+using Ledger.Website.Helpers;
 using Ledger.Website.Security;
 
 namespace Ledger.Website.Controllers;
@@ -18,15 +19,19 @@ namespace Ledger.Website.Controllers;
 /// <param name="apiClient">The API client.</param>
 /// <param name="options">Sign-in settings.</param>
 /// <param name="throttle">Slows down password guessing.</param>
+/// <param name="lang">The language of the request.</param>
 /// <param name="logger">Logger.</param>
 [AllowAnonymous]
 public sealed class AccountController(
     LedgerClient apiClient,
     IOptions<WebsiteOptions> options,
     LoginThrottle throttle,
+    Lang lang,
     ILogger<AccountController> logger) : Controller
 {
-    private const string Unreachable = "Can't reach Ledger's engine right now. Check that the ledger-webapi container is running, then try again.";
+    private string Unreachable => lang.T(
+        "Can't reach Ledger's engine right now. Check that the ledger-webapi container is running, then try again.",
+        "Não consigo chegar ao motor do Ledger. Confirma que o contentor ledger-webapi está a correr e tenta outra vez.");
     private static readonly TimeSpan FailureDelay = TimeSpan.FromMilliseconds(600);
 
     /// <summary>The sign-in form (the create-account form on the very first visit).</summary>
@@ -44,11 +49,11 @@ public sealed class AccountController(
         var model = await PageModelAsync(returnUrl);
         if (discord == "not-linked")
         {
-            model.Errors = ["No account here is linked to that Discord account yet. Sign in with your password, then link Discord in Settings."];
+            model.Errors = [lang.T("No user here is linked to that Discord account yet. Sign in with your password, then link Discord in Settings.", "Nenhum utilizador aqui está ligado a essa conta Discord. Entra com a palavra-passe e depois liga o Discord nas Definições.")];
         }
         else if (discord == "failed")
         {
-            model.Errors = ["Signing in with Discord didn't finish. Try again, or use your password."];
+            model.Errors = [lang.T("Signing in with Discord didn't finish. Try again, or use your password.", "A entrada com o Discord não terminou. Tenta outra vez, ou usa a palavra-passe.")];
         }
 
         if (model.IsFirstAccount)
@@ -92,7 +97,7 @@ public sealed class AccountController(
                 logger.LogWarning("Failed sign-in for {UserName} from {Address}", model.UserName, Address);
 
             await Task.Delay(FailureDelay);
-            model.Errors = ["Wrong user name or password."];
+            model.Errors = [lang.T("Wrong user name or password.", "Nome de utilizador ou palavra-passe errados.")];
             Response.StatusCode = StatusCodes.Status401Unauthorized;
             return View("SignIn", model);
         }
@@ -250,12 +255,13 @@ public sealed class AccountController(
         try
         {
             var user = await apiClient.UserDiscordCreateAsync(new UserDiscordCreateRequest { UserName = model.UserName, DiscordId = account.Id, DiscordName = account.Name });
+            user = await KeepLanguageAsync(user);
             if (logger.IsEnabled(LogLevel.Information))
                 logger.LogInformation("Account {UserName} created with Discord", user.UserName);
 
             await DiscordAuthentication.ForgetAsync(HttpContext);
             await LedgerAuthentication.SignInAsync(HttpContext, user, true, options.Value.RememberDays);
-            return LocalRedirect(model.ReturnUrl == "/" ? "/sync" : model.ReturnUrl);
+            return LocalRedirect(model.ReturnUrl);
         }
         catch (LedgerApiException exception) when (exception.StatusCode == System.Net.HttpStatusCode.BadRequest)
         {
@@ -321,24 +327,25 @@ public sealed class AccountController(
         {
             throttle.Failed(Address);
             await Task.Delay(FailureDelay);
-            model.Errors = ["The setup key is wrong. It is LEDGER_SETUP_KEY, in the .env file next to docker-compose.yml."];
+            model.Errors = [lang.T("The setup key is wrong. It is LEDGER_SETUP_KEY, in the .env file next to docker-compose.yml.", "A chave de configuração está errada. É a LEDGER_SETUP_KEY, no ficheiro .env ao lado do docker-compose.yml.")];
             return View("CreateAccount", model);
         }
 
         if (!string.Equals(password, confirmPassword, StringComparison.Ordinal))
         {
-            model.Errors = ["The two passwords are different."];
+            model.Errors = [lang.T("The two passwords are different.", "As duas palavras-passe são diferentes.")];
             return View("CreateAccount", model);
         }
 
         try
         {
             var user = await apiClient.UserCreateAsync(new UserCreateRequest { UserName = model.UserName, Password = password });
+            user = await KeepLanguageAsync(user);
             if (logger.IsEnabled(LogLevel.Information))
                 logger.LogInformation("Account {UserName} created ({Role})", user.UserName, user.Role);
 
             await LedgerAuthentication.SignInAsync(HttpContext, user, remember, options.Value.RememberDays);
-            return LocalRedirect(model.ReturnUrl == "/" ? "/sync" : model.ReturnUrl);
+            return LocalRedirect(model.ReturnUrl);
         }
         catch (LedgerApiException exception) when (exception.StatusCode == System.Net.HttpStatusCode.BadRequest)
         {
@@ -362,6 +369,24 @@ public sealed class AccountController(
         return LocalRedirect("/");
     }
 
+    /// <summary>A user created from a Portuguese page starts in Portuguese.</summary>
+    private async Task<UserDTO> KeepLanguageAsync(UserDTO user)
+    {
+        if (!lang.Pt)
+        {
+            return user;
+        }
+
+        try
+        {
+            return await apiClient.SettingSaveAsync(new SettingSaveRequest { UserId = user.Id, Language = lang.Code });
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or LedgerApiException)
+        {
+            return user;   // the language can still be picked in Settings
+        }
+    }
+
     private string Address => HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
     private bool Throttled(AccountPageModel model)
@@ -372,7 +397,7 @@ public sealed class AccountController(
             return false;
         }
 
-        model.Errors = [$"Too many wrong attempts. Try again in {Math.Max(1, (int)Math.Ceiling(wait.TotalMinutes))} min."];
+        model.Errors = [lang.T($"Too many wrong attempts. Try again in {Math.Max(1, (int)Math.Ceiling(wait.TotalMinutes))} min.", $"Demasiadas tentativas erradas. Tenta outra vez daqui a {Math.Max(1, (int)Math.Ceiling(wait.TotalMinutes))} min.")];
         Response.StatusCode = StatusCodes.Status429TooManyRequests;
         return true;
     }

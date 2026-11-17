@@ -68,7 +68,10 @@ public sealed class ProjectDTO
     /// <summary>Gets or sets what the works should cost.</summary>
     public decimal? WorksBudget { get; set; }
 
-    /// <summary>Gets or sets what the project should cost in the end: what was put in plus what is left of the works budget.</summary>
+    /// <summary>Gets or sets the price agreed with the seller.</summary>
+    public decimal? AgreedPrice { get; set; }
+
+    /// <summary>Gets or sets what the project should cost in the end: what was put in, plus what is left of the agreed price and of the works budget.</summary>
     public decimal? ProjectedCost { get; set; }
 
     /// <summary>Gets or sets the profit the target sale price would leave.</summary>
@@ -138,4 +141,7 @@ public sealed class ProjectSaveRequest
 
     /// <summary>Gets or sets what the works should cost (empty: none).</summary>
     public decimal? WorksBudget { get; set; }
+
+    /// <summary>Gets or sets the price agreed with the seller (empty: none).</summary>
+    public decimal? AgreedPrice { get; set; }
 }

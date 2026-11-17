@@ -2,42 +2,45 @@
 @{
     var antiforgeryToken = Antiforgery.GetAndStoreTokens(Context).RequestToken;
     var title = ViewData["Title"] as string;
-    // The look picked in Settings on this device (Mint when none): read here so the page never flashes the other one.
-    var theme = Context.Request.Cookies["ledger-theme"] is "ledger" ? "ledger" : null;
 }
 <!doctype html>
-<html lang="en" data-theme="@theme">
+<html lang="@L.Code" data-theme="dark">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="request-verification-token" content="@antiforgeryToken" />
-    <meta name="color-scheme" content="dark" />
     <title>@(string.IsNullOrEmpty(title) || title == "Ledger" ? "Ledger" : $"{title} · Ledger")</title>
-    <meta name="description" content="Ledger follows your Trading 212 portfolio: what it's worth, every holding, the dividends and the history behind them. Self-hosted, on your phone and your computer." />
-    <meta name="theme-color" content="@(theme is null ? "#080B0A" : "#0A0D0C")" />
+    <meta name="description" content="@L.T("Ledger is a calm book for your money: what came in, what went out and what was left, month by month. Self-hosted, on your phone and your computer.", "O Ledger é um livro calmo para o teu dinheiro: o que entrou, o que saiu e o que sobrou, mês a mês. Alojado por ti, no telemóvel e no computador.")" />
+    <meta name="theme-color" content="#0F0F14" />
     <meta name="application-name" content="Ledger" />
     <meta name="apple-mobile-web-app-title" content="Ledger" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    @* The look picked on this device (dark when none), set before anything paints so the page never flashes the other one. *@
+    <script>
+        (function () {
+            try {
+                if (localStorage.getItem("ledger-theme") === "light") {
+                    document.documentElement.setAttribute("data-theme", "light");
+                    document.querySelector("meta[name=theme-color]").setAttribute("content", "#F3F0EA");
+                }
+            } catch (e) { }
+        })();
+    </script>
     <link rel="icon" href="~/img/ledger.svg" type="image/svg+xml" />
     <link rel="icon" href="~/img/favicon-32.png" sizes="32x32" type="image/png" />
     <link rel="apple-touch-icon" href="~/img/apple-touch-icon.png" />
     <link rel="manifest" href="~/manifest.webmanifest" />
-    <link rel="preload" href="~/fonts/geist-latin-wght.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="~/fonts/bricolage-grotesque-latin-wght.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="~/fonts/instrument-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="~/fonts/instrument-serif-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="~/fonts/jetbrains-mono-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
-    @if (ViewData["App"] is true)
-    {
-        @* Pages are fetched as soon as a finger lands on a link, so they open at once. *@
-        <script type="speculationrules">
-            { "prefetch": [ { "where": { "and": [ { "href_matches": "/*" }, { "not": { "href_matches": "/about" } }, { "not": { "href_matches": "/logo/*" } }, { "not": { "selector_matches": "[data-no-prefetch]" } } ] }, "eagerness": "moderate" } ] }
-        </script>
-    }
     @await RenderSectionAsync("Head", required: false)
 </head>
 <body>
     @RenderBody()
+    <script src="~/js/app.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

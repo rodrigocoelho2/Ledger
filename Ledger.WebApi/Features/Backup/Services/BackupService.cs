@@ -151,12 +151,12 @@ internal sealed class BackupService(
         var projects = (await _projectRepository.ListAsync(id)).ToDictionary(static project => project.Name, static project => project.ProjectUniqueID, StringComparer.OrdinalIgnoreCase);
         foreach (var project in file.Projects)
         {
-            await EnsureProjectAsync(project.Name, project.TargetSale, project.WorksBudget);
+            await EnsureProjectAsync(project.Name, project.TargetSale, project.WorksBudget, project.AgreedPrice);
         }
 
         foreach (var name in file.Entries.Where(static entry => entry.Project is not null).Select(static entry => entry.Project!).Distinct(StringComparer.OrdinalIgnoreCase))
         {
-            await EnsureProjectAsync(name, null, null);
+            await EnsureProjectAsync(name, null, null, null);
         }
 
         foreach (var (month, amount) in file.Caps)
@@ -204,7 +204,7 @@ internal sealed class BackupService(
             }
         }
 
-        async Task EnsureProjectAsync(string name, decimal? targetSale, decimal? worksBudget)
+        async Task EnsureProjectAsync(string name, decimal? targetSale, decimal? worksBudget, decimal? agreedPrice)
         {
             var trimmed = name.Trim();
             if (trimmed.Length == 0 || projects.ContainsKey(trimmed))
@@ -213,7 +213,7 @@ internal sealed class BackupService(
             }
 
             trimmed = trimmed.Length <= EntryService.ProjectNameLength ? trimmed : trimmed[..EntryService.ProjectNameLength];
-            if (await _projectRepository.SaveAsync(id, null, trimmed, targetSale, worksBudget) is { } created)
+            if (await _projectRepository.SaveAsync(id, null, trimmed, targetSale, worksBudget, agreedPrice) is { } created)
             {
                 projects[trimmed] = created;
                 result.ProjectsCreated++;
@@ -264,7 +264,7 @@ internal sealed class BackupService(
 
         var ledger = new FileLedger();
         ledger.Accounts.AddRange(accounts.Select(static account => new FileAccount(account.Name, (AccountKind)account.Kind, account.OpeningBalance)));
-        ledger.Projects.AddRange(projects.Select(static project => new FileProject(project.Name, project.TargetSale, project.WorksBudget)));
+        ledger.Projects.AddRange(projects.Select(static project => new FileProject(project.Name, project.TargetSale, project.WorksBudget, project.AgreedPrice)));
         foreach (var (month, amount) in await _capRepository.ListAsync(userId))
         {
             ledger.Caps[month] = amount;

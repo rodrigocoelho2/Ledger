@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Unit tests: the portfolio maths, the Trading 212 CSV parser and API mapping, the instrument names, the secrets and
-       the services, run against the in-memory repositories and the demo data with a fixed clock (no database, no network). -->
+  <!-- Unit tests: the money maths (overview, rental, projects, balances), quick add, the categories, the CSV and JSON
+       files, the demo ledger and the services, run against the in-memory repositories with a fixed clock (no database,
+       no network). -->
   <PropertyGroup>
     <IsPackable>false</IsPackable>
   </PropertyGroup>

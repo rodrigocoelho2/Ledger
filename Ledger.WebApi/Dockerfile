@@ -1,4 +1,4 @@
-# Ledger.WebApi — the portfolio and the Trading 212 sync. Not published on any port: only the website reaches it.
+# Ledger.WebApi — the engine: users, accounts, entries and the sums. Not published on any port: only the website reaches it.
 # Build context: the solution folder.
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build

@@ -53,6 +53,7 @@ internal sealed class ProjectService(
     private const string FieldName = "Name";
     private const string FieldTargetSale = "TargetSale";
     private const string FieldWorksBudget = "WorksBudget";
+    private const string FieldAgreedPrice = "AgreedPrice";
 
     private readonly IProjectRepository _projectRepository = projectRepository;
     private readonly IEntryRepository _entryRepository = entryRepository;
@@ -125,6 +126,7 @@ internal sealed class ProjectService(
         var name = (item.Name ?? string.Empty).Trim();
         var targetSale = Money(item.TargetSale);
         var worksBudget = Money(item.WorksBudget);
+        var agreedPrice = Money(item.AgreedPrice);
 
         var errors = new List<ApiValidationError>();
         var projects = await _projectRepository.ListAsync(userId);
@@ -151,12 +153,17 @@ internal sealed class ProjectService(
             errors.Add(await ErrorAsync(FieldWorksBudget, nameof(TranslationKeys.OutOfRange), 0, MaxAmount));
         }
 
+        if (agreedPrice is < 0m or > MaxAmount)
+        {
+            errors.Add(await ErrorAsync(FieldAgreedPrice, nameof(TranslationKeys.OutOfRange), 0, MaxAmount));
+        }
+
         if (errors.Count > 0)
         {
             return await InvalidAsync<string>(errors);
         }
 
-        var saved = await _projectRepository.SaveAsync(userId, projectId, name, targetSale is 0m ? null : targetSale, worksBudget is 0m ? null : worksBudget);
+        var saved = await _projectRepository.SaveAsync(userId, projectId, name, targetSale is 0m ? null : targetSale, worksBudget is 0m ? null : worksBudget, agreedPrice is 0m ? null : agreedPrice);
         return saved is { } id ? ServiceApiResponse<string>.Success(Id(id)) : await MissingAsync<string>(item.Id ?? name);
 
         static decimal? Money(decimal? value) => value is { } amount ? decimal.Round(amount, 2, MidpointRounding.AwayFromZero) : null;

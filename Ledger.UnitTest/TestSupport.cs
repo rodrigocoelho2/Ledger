@@ -1,192 +1,162 @@
 using Ledger.Library.Enums;
 using Ledger.WebApi.Extensions.Data;
 using Ledger.WebApi.Extensions.Globalization;
-using Ledger.WebApi.Extensions.Security;
 using Ledger.WebApi.Extensions.Time;
 using Ledger.WebApi.Features;
-using Ledger.WebApi.Features.Connections.Repositories;
+using Ledger.WebApi.Features.Accounts.Repositories;
+using Ledger.WebApi.Features.Accounts.Services;
+using Ledger.WebApi.Features.Backup.Services;
 using Ledger.WebApi.Features.Demo.Services;
-using Ledger.WebApi.Features.Instruments.Models.Entities;
-using Ledger.WebApi.Features.Insights.Services;
-using Ledger.WebApi.Features.Instruments.Repositories;
-using Ledger.WebApi.Features.Portfolio.Models.Entities;
-using Ledger.WebApi.Features.Portfolio.Repositories;
-using Ledger.WebApi.Features.Portfolio.Services;
-using Ledger.WebApi.Features.Prices.Repositories;
-using Ledger.WebApi.Features.Users.Models.DTOs;
-using Ledger.WebApi.Features.Users.Repositories;
-using Ledger.WebApi.Features.Users.Services;
-using Microsoft.Extensions.Options;
+using Ledger.WebApi.Features.Entries.Models.Entities;
+using Ledger.WebApi.Features.Entries.Repositories;
+using Ledger.WebApi.Features.Entries.Services;
+using Ledger.WebApi.Features.Overview.Repositories;
+using Ledger.WebApi.Features.Overview.Services;
+using Ledger.WebApi.Features.Projects.Repositories;
+using Ledger.WebApi.Features.Projects.Services;
+using Ledger.WebApi.Features.Rental.Services;
+using Ledger.WebApi.Features.Settings.Repositories;
+using Microsoft.AspNetCore.Http;
 
 namespace Ledger.UnitTest;
 
-/// <summary>Shared helpers: a fixed clock, options and hand-made portfolio data.</summary>
-internal static class TestSupport
+/// <summary>
+/// A clock that never moves.
+/// </summary>
+/// <param name="now">The moment it always says.</param>
+internal sealed class FixedTime(DateTimeOffset now) : TimeProvider
 {
-    /// <summary>Friday 23 October 2026, 18:40 in Lisbon (17:40 UTC).</summary>
-    public static readonly DateTimeOffset Now = new(2026, 10, 23, 17, 40, 0, TimeSpan.Zero);
-
-    public static DateOnly Today => new(2026, 10, 23);
-
-    public static IOptions<LedgerOptions> Options(bool demo = false, Action<LedgerOptions>? configure = null)
-    {
-        var options = new LedgerOptions
-        {
-            ApiKey = "test-key",
-            EncryptionKey = "test-encryption-key-0123456789",
-            TimeZone = "Europe/Lisbon",
-            Currency = "EUR",
-            DemoMode = demo,
-        };
-        configure?.Invoke(options);
-        return Microsoft.Extensions.Options.Options.Create(options);
-    }
-
-    /// <summary>Midday UTC of a day (the same local day in Lisbon all year).</summary>
-    public static DateTime At(DateOnly day, int hour = 12) => day.ToDateTime(new TimeOnly(hour, 0), DateTimeKind.Utc);
-
-    public static InstrumentRow Instrument(int id, string symbol, string currency = "EUR", AssetClass assetClass = AssetClass.EquityEtf) => new()
-    {
-        InstrumentID = id,
-        InstrumentKey = "T212:" + symbol,
-        Ticker = symbol,
-        Symbol = symbol,
-        Name = symbol + " name",
-        Currency = currency,
-        AssetClass = (byte)assetClass,
-    };
-
-    public static TradeRow Buy(int instrumentId, DateOnly day, decimal quantity, decimal price, decimal? total = null, string currency = "EUR") => new()
-    {
-        InstrumentID = instrumentId,
-        Side = 1,
-        Quantity = quantity,
-        Price = price,
-        PriceCurrency = currency,
-        Total = total ?? quantity * price,
-        ExecutedAt = At(day),
-    };
-
-    public static TradeRow Sell(int instrumentId, DateOnly day, decimal quantity, decimal price, decimal? total = null, string currency = "EUR") => new()
-    {
-        InstrumentID = instrumentId,
-        Side = 2,
-        Quantity = quantity,
-        Price = price,
-        PriceCurrency = currency,
-        Total = total ?? quantity * price,
-        ExecutedAt = At(day),
-    };
-
-    public static CashMovementRow Cash(CashKind kind, DateOnly day, decimal amount) => new() { Kind = (byte)kind, Amount = amount, At = At(day, 9) };
-
-    public static DividendRow Dividend(int instrumentId, DateOnly day, decimal amount, decimal? quantity = null) => new()
-    {
-        InstrumentID = instrumentId,
-        PaidAt = At(day, 10),
-        Amount = amount,
-        Quantity = quantity,
-        Kind = "DIVIDEND",
-    };
-
-    /// <summary>Portfolio data worked out from the trades (no Trading 212 positions), in euros.</summary>
-    public static PortfolioData Data(
-        IEnumerable<InstrumentRow> instruments,
-        IEnumerable<TradeRow>? trades = null,
-        IEnumerable<CashMovementRow>? cash = null,
-        IEnumerable<DividendRow>? dividends = null,
-        PriceBook? prices = null,
-        DateOnly? today = null,
-        IEnumerable<PieRow>? pies = null,
-        IEnumerable<PieHoldingRow>? pieHoldings = null) => new()
-        {
-            Currency = "EUR",
-            Today = today ?? Today,
-            Instruments = instruments.ToDictionary(static instrument => instrument.InstrumentID),
-            Holdings = [],
-            BrokerHoldings = false,
-            Trades = (trades ?? []).OrderBy(static trade => trade.ExecutedAt).ToList(),
-            Dividends = (dividends ?? []).OrderBy(static dividend => dividend.PaidAt).ToList(),
-            Cash = (cash ?? []).OrderBy(static movement => movement.At).ToList(),
-            Snapshots = [],
-            Prices = prices ?? new PriceBook("EUR"),
-            LocalDay = static utc => DateOnly.FromDateTime(utc),
-            Pies = (pies ?? []).ToList(),
-            PieHoldings = (pieHoldings ?? []).ToList(),
-        };
-}
-
-/// <summary>A clock stopped at <see cref="TestSupport.Now"/>.</summary>
-internal sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
-{
-    public DateTimeOffset Value { get; set; } = now;
-
-    public override DateTimeOffset GetUtcNow() => Value;
+    /// <inheritdoc />
+    public override DateTimeOffset GetUtcNow() => now;
 }
 
 /// <summary>
-/// The services of Ledger.WebApi on one in-memory store, as demo mode wires them.
+/// Every service of the WebApi over the in-memory repositories, with a fixed clock: 17 November 2026, so the demo
+/// ledger's last full month is October 2026.
 /// </summary>
-internal sealed class TestApp
+internal sealed class Harness
 {
-    public TestApp(bool demo = false)
+    /// <summary>The moment the tests run at.</summary>
+    public static readonly DateTimeOffset Now = new(2026, 11, 17, 10, 0, 0, TimeSpan.Zero);
+
+    /// <summary>Initializes a new instance of the <see cref="Harness"/> class.</summary>
+    /// <param name="language">The Accept-Language of the "request" ("en" or "pt").</param>
+    public Harness(string language = "en")
     {
-        Time = new FixedTimeProvider(TestSupport.Now);
-        Options = TestSupport.Options(demo);
-        Clock = new AppClock(Time, Options);
-        var globalization = new GlobalizationHelper();
-        Store = new MemoryStore();
-        Users = new MemoryUserRepository(Store, Time);
-        Instruments = new MemoryInstrumentRepository(Store);
-        Portfolio = new MemoryPortfolioRepository(Store, Time);
-        Prices = new MemoryPriceRepository(Store);
-        Connections = new MemoryConnectionRepository(Store, Time);
-        Protector = new SecretProtector(Options);
-        Writer = new PortfolioWriter(Instruments, Portfolio);
-        Seeder = demo ? new DemoSeeder(Writer, Instruments, Portfolio, Prices, Connections, Protector, Clock) : new NoDemoSeeder();
-        UserService = new UserService(Users, Seeder, globalization, Options);
-        Loader = new PortfolioLoader(Portfolio, Instruments, Prices, Connections, Clock, Options);
-        PortfolioService = new PortfolioService(Loader, Connections, globalization);
-        Insights = new InsightsService(Loader, globalization);
+        var time = new FixedTime(Now);
+        var options = Microsoft.Extensions.Options.Options.Create(new LedgerOptions { ApiKey = "test-key", TimeZone = "Europe/Lisbon" });
+        Clock = new AppClock(time, options);
+
+        var context = new DefaultHttpContext();
+        context.Request.Headers.AcceptLanguage = language;
+        var globalization = new GlobalizationHelper(new HttpContextAccessor { HttpContext = context });
+
+        Accounts = new MemoryAccountRepository(Store);
+        Entries = new MemoryEntryRepository(Store, time);
+        Projects = new MemoryProjectRepository(Store, time);
+        Caps = new MemoryCapRepository(Store);
+        Settings = new MemorySettingRepository(Store);
+
+        AccountService = new AccountService(Accounts, globalization);
+        EntryService = new EntryService(Entries, Accounts, Projects, Clock, globalization);
+        OverviewService = new OverviewService(Entries, Accounts, Projects, Caps, Clock, globalization);
+        RentalService = new RentalService(Entries, Accounts, Projects, Clock, globalization);
+        ProjectService = new ProjectService(Projects, Entries, Accounts, Clock, globalization);
+        BackupService = new BackupService(Entries, Accounts, Projects, Caps, Clock, globalization);
     }
 
-    public InsightsService Insights { get; }
+    /// <summary>Gets the shared in-memory store.</summary>
+    public MemoryStore Store { get; } = new();
 
-    public FixedTimeProvider Time { get; }
-
-    public IOptions<LedgerOptions> Options { get; }
-
+    /// <summary>Gets the clock.</summary>
     public IAppClock Clock { get; }
 
-    public MemoryStore Store { get; }
+    /// <summary>Gets today, in Lisbon.</summary>
+    public DateOnly Today => Clock.Today;
 
-    public MemoryUserRepository Users { get; }
+    /// <summary>Gets the account repository.</summary>
+    public IAccountRepository Accounts { get; }
 
-    public MemoryInstrumentRepository Instruments { get; }
+    /// <summary>Gets the entry repository.</summary>
+    public IEntryRepository Entries { get; }
 
-    public MemoryPortfolioRepository Portfolio { get; }
+    /// <summary>Gets the project repository.</summary>
+    public IProjectRepository Projects { get; }
 
-    public MemoryPriceRepository Prices { get; }
+    /// <summary>Gets the cap repository.</summary>
+    public ICapRepository Caps { get; }
 
-    public MemoryConnectionRepository Connections { get; }
+    /// <summary>Gets the setting repository.</summary>
+    public ISettingRepository Settings { get; }
 
-    public SecretProtector Protector { get; }
+    /// <summary>Gets the account service.</summary>
+    public IAccountService AccountService { get; }
 
-    public PortfolioWriter Writer { get; }
+    /// <summary>Gets the entry service.</summary>
+    public IEntryService EntryService { get; }
 
-    public IDemoSeeder Seeder { get; }
+    /// <summary>Gets the overview service.</summary>
+    public IOverviewService OverviewService { get; }
 
-    public UserService UserService { get; }
+    /// <summary>Gets the rental service.</summary>
+    public IRentalService RentalService { get; }
 
-    public PortfolioLoader Loader { get; }
+    /// <summary>Gets the project service.</summary>
+    public IProjectService ProjectService { get; }
 
-    public PortfolioService PortfolioService { get; }
+    /// <summary>Gets the backup service.</summary>
+    public IBackupService BackupService { get; }
 
-    /// <summary>Creates an account (seeded with the demo portfolio when the app runs in demo mode) and returns its id.</summary>
-    public async Task<string> CreateUserAsync(string name = "rodas")
+    /// <summary>A user with the four starter accounts.</summary>
+    /// <returns>The user's id, as the services take it.</returns>
+    public async Task<string> StarterAsync()
     {
-        var created = await UserService.CreateAsync(new UserCreateRequest { UserName = name, Password = "ledger-2026-test" });
-        Assert.True(created.IsSuccess, created.Problems?.Title);
-        return created.Result!.Id;
+        var id = Guid.NewGuid();
+        await new StarterSeeder(Accounts).SeedAsync(id, "en");
+        return id.ToString("N");
     }
+
+    /// <summary>A user with the sample ledger.</summary>
+    /// <returns>The user's id, as the services take it.</returns>
+    public async Task<string> DemoAsync()
+    {
+        var id = Guid.NewGuid();
+        await new DemoSeeder(Accounts, Projects, Entries, Caps, Settings, Clock).SeedAsync(id, "en");
+        return id.ToString("N");
+    }
+
+    /// <summary>The id of an account, by name.</summary>
+    /// <param name="userId">The user.</param>
+    /// <param name="name">The account's name.</param>
+    /// <returns>The id.</returns>
+    public async Task<string> AccountIdAsync(string userId, string name) =>
+        (await AccountService.ListAsync(userId)).Result!.Single(account => account.Name == name).Id;
+}
+
+/// <summary>Entries made up for the pure maths.</summary>
+internal static class Make
+{
+    /// <summary>An entry.</summary>
+    /// <param name="kind">Money in, out or moved.</param>
+    /// <param name="amount">The amount.</param>
+    /// <param name="day">The day.</param>
+    /// <param name="category">The category key.</param>
+    /// <param name="scope">The part of life.</param>
+    /// <param name="account">The account.</param>
+    /// <param name="to">The account a transfer goes to.</param>
+    /// <param name="nights">The nights of a booking.</param>
+    /// <returns>The row.</returns>
+    public static EntryRow Entry(EntryKind kind, decimal amount, DateOnly day, string? category = null, EntryScope scope = EntryScope.Personal, Guid? account = null, Guid? to = null, short? nights = null) => new()
+    {
+        EntryUniqueID = Guid.NewGuid(),
+        Kind = (byte)kind,
+        Scope = (byte)scope,
+        Name = category ?? "transfer",
+        Amount = amount,
+        EntryDate = day.ToDateTime(TimeOnly.MinValue),
+        Category = kind == EntryKind.Transfer ? null : category ?? (kind == EntryKind.Inflow ? "other-income" : "other"),
+        AccountUniqueID = account,
+        ToAccountUniqueID = to,
+        Nights = nights,
+    };
 }

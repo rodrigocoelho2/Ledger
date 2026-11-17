@@ -168,6 +168,7 @@ internal static class LedgerAuthentication
             AllowRefresh = true,
         };
         properties.Items[CheckedAtKey] = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
+        Remember(context, user.Language);
         return context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, Principal(user), properties);
     }
 

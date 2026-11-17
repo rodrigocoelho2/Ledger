@@ -1,0 +1,148 @@
+@model EntryFormModel
+@{
+    // The form that adds an entry or changes one. The page script loads it into the dialog and shows only the
+    // categories (and the extra fields) that fit the kind and the part of life picked.
+    var entry = Model.Entry;
+    var editing = !string.IsNullOrEmpty(entry?.Id);
+    var modules = Model.RentalEnabled || Model.FlipsEnabled;
+    var picked = entry?.Category;
+    var account = entry?.AccountId ?? Model.Accounts.FirstOrDefault()?.Id;
+    var to = entry?.ToAccountId;
+    var categories = Categories.All.Where(category =>
+        category.In(EntryScope.Personal)
+        || (Model.RentalEnabled && category.In(EntryScope.Rental))
+        || (Model.FlipsEnabled && category.In(EntryScope.Flips)));
+}
+<form class="sheet-body" data-ajax data-entry-form action="/entries/save" method="post" autocomplete="off">
+    <div class="sheet-top">
+        <h2>@(editing ? L.T("Change entry", "Alterar movimento") : L.T("New entry", "Novo movimento"))</h2>
+        <button type="button" class="icon-btn bare" data-close aria-label="@L.T("Close", "Fechar")">@Icons.Get("x")</button>
+    </div>
+    <input type="hidden" name="id" value="@entry?.Id" />
+
+    <div class="seg full" role="radiogroup" aria-label="@L.T("Kind", "Tipo")">
+        <input type="radio" name="kind" id="kind-out" value="Outflow" checked="@(Model.Kind == EntryKind.Outflow)" /><label for="kind-out">@L.T("Outflow", "Saída")</label>
+        <input type="radio" name="kind" id="kind-in" value="Inflow" checked="@(Model.Kind == EntryKind.Inflow)" /><label for="kind-in">@L.T("Inflow", "Entrada")</label>
+        <input type="radio" name="kind" id="kind-move" value="Transfer" checked="@(Model.Kind == EntryKind.Transfer)" /><label for="kind-move">@L.T("Transfer", "Transferência")</label>
+    </div>
+
+    <div class="amount">
+        <label class="eyebrow" for="entry-amount">@L.T("Amount", "Valor")</label>
+        <div class="amount-row">
+            <span aria-hidden="true">€</span>
+            <input id="entry-amount" type="text" name="amount" inputmode="decimal" placeholder="@L.Input(0m)" value="@L.Input(entry is { Amount: > 0 } ? entry.Amount : (decimal?)null)" required autofocus="@(!editing)" />
+        </div>
+    </div>
+
+    <label class="field">
+        <span>@L.T("What was it?", "O que foi?")</span>
+        <input type="text" name="name" maxlength="120" value="@entry?.Name" placeholder="@L.T("Lunch, salary, electricity…", "Almoço, salário, eletricidade…")" required />
+    </label>
+
+    @if (modules)
+    {
+        <div class="field" data-for-kinds="Outflow Inflow">
+            <span class="field-label">@L.T("Belongs to", "Pertence a")</span>
+            <div class="picks" role="radiogroup">
+                <input type="radio" name="scope" id="scope-personal" value="Personal" checked="@(Model.Scope == EntryScope.Personal)" /><label for="scope-personal">@L.T("Personal", "Pessoal")</label>
+                @if (Model.RentalEnabled)
+                {
+                    <input type="radio" name="scope" id="scope-rental" value="Rental" checked="@(Model.Scope == EntryScope.Rental)" /><label for="scope-rental" style="--pick:var(--brass)"><span class="dot" style="background:var(--brass)"></span>@L.T("Rental", "Alojamento")</label>
+                }
+                @if (Model.FlipsEnabled)
+                {
+                    <input type="radio" name="scope" id="scope-flips" value="Flips" checked="@(Model.Scope == EntryScope.Flips)" /><label for="scope-flips" style="--pick:var(--mauve)"><span class="dot" style="background:var(--mauve)"></span>@L.T("Buy & Sell", "Compra & Venda")</label>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <input type="hidden" name="scope" value="Personal" />
+    }
+
+    <div class="field" data-for-kinds="Outflow Inflow">
+        <span class="field-label">@L.T("Category", "Categoria")</span>
+        <div class="picks" role="radiogroup" data-categories>
+            @foreach (var category in categories)
+            {
+                <span data-kind="@category.Kind" data-scopes="@string.Join(' ', category.Scopes)">
+                    <input type="radio" name="category" id="cat-@category.Kind-@category.Key" value="@category.Key" checked="@(picked == category.Key && category.Kind == Model.Kind)" /><label for="cat-@category.Kind-@category.Key" style="--pick:@category.Color"><span class="dot" style="background:@category.Color"></span>@category.Name(L.Code)</label>
+                </span>
+            }
+        </div>
+    </div>
+
+    @if (Model.RentalEnabled)
+    {
+        <div class="field-row" data-for-booking hidden>
+            <label class="field">
+                <span>@L.T("Nights", "Noites")</span>
+                <input type="number" class="mono" name="nights" min="0" max="366" inputmode="numeric" value="@entry?.Nights" />
+            </label>
+            <label class="field">
+                <span>@L.T("Came through", "Veio por")</span>
+                <input type="text" name="channel" maxlength="40" list="channels" value="@entry?.Channel" placeholder="Airbnb" />
+                <datalist id="channels"><option value="Airbnb"></option><option value="Booking"></option><option value="@L.T("Direct", "Direto")"></option></datalist>
+            </label>
+        </div>
+    }
+
+    @if (Model.FlipsEnabled)
+    {
+        <div data-for-scope="Flips" hidden>
+            <label class="field">
+                <span>@L.T("Project", "Projeto")</span>
+                <select name="projectId" data-project>
+                    @foreach (var (id, projectName) in Model.Projects)
+                    {
+                        <option value="@id" selected="@(Model.ProjectId == id)">@projectName</option>
+                    }
+                    <option value="" selected="@(Model.Projects.Count == 0)">@L.T("+ A new project…", "+ Um projeto novo…")</option>
+                </select>
+            </label>
+            <label class="field" data-new-project hidden>
+                <span>@L.T("Name of the new project", "Nome do projeto novo")</span>
+                <input type="text" name="projectName" maxlength="80" placeholder="@L.T("T2 Bela Vista", "T2 Bela Vista")" />
+            </label>
+        </div>
+    }
+
+    <div class="field">
+        <span class="field-label" data-label-account data-plain="@L.T("Account", "Conta")" data-from="@L.T("From", "De")">@L.T("Account", "Conta")</span>
+        <div class="acct-picks" role="radiogroup">
+            @foreach (var item in Model.Accounts)
+            {
+                <span>
+                    <input type="radio" name="accountId" id="acct-@item.Id" value="@item.Id" checked="@(account == item.Id)" /><label for="acct-@item.Id"><b>@item.Name</b><span>@L.Money(item.Balance)</span></label>
+                </span>
+            }
+        </div>
+    </div>
+
+    <div class="field" data-for-kinds="Transfer" hidden>
+        <span class="field-label">@L.T("To", "Para")</span>
+        <div class="acct-picks" role="radiogroup">
+            @foreach (var item in Model.Accounts)
+            {
+                <span>
+                    <input type="radio" name="toAccountId" id="to-@item.Id" value="@item.Id" checked="@(to == item.Id)" /><label for="to-@item.Id"><b>@item.Name</b><span>@L.Money(item.Balance)</span></label>
+                </span>
+            }
+        </div>
+    </div>
+
+    <label class="field">
+        <span>@L.T("Day", "Dia")</span>
+        <input type="date" class="mono" name="date" value="@Model.Day.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)" required />
+    </label>
+
+    <div class="form-msg" hidden role="alert"></div>
+    <div class="form-foot">
+        @if (editing)
+        {
+            <button type="button" class="btn danger" data-post="/entries/delete" data-id="@entry!.Id" data-confirm>@Icons.Get("trash")<span class="sr">@L.T("Delete entry", "Apagar movimento")</span></button>
+        }
+        <button type="submit" class="btn primary">@(editing ? L.T("Save changes", "Guardar alterações") : L.T("Save entry", "Guardar movimento"))</button>
+    </div>
+</form>

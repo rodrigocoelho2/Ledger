@@ -1,0 +1,98 @@
+@model EntriesPageModel
+@{
+    Layout = "_App";
+    var data = Model.Data;
+    var name = L.Month(Model.Month);
+    ViewData["Title"] = L.T("Entries", "Movimentos") + " · " + name;
+
+    var scope = Model.Scope?.ToString().ToLowerInvariant();
+    string Link(string month, string? part, string? category)
+    {
+        var query = "?month=" + month;
+        if (part is not null && Model.HasModules) { query += "&scope=" + part; }
+        if (category is not null) { query += "&category=" + Uri.EscapeDataString(category); }
+        return "/entries" + query;
+    }
+
+    var previous = Model.Month.AddMonths(-1).ToString("yyyy-MM", System.Globalization.CultureInfo.InvariantCulture);
+    var next = Model.Month.AddMonths(1).ToString("yyyy-MM", System.Globalization.CultureInfo.InvariantCulture);
+    var incoming = data.Entries.Where(static entry => entry.Kind == EntryKind.Inflow).Sum(static entry => entry.Amount);
+    var outgoing = data.Entries.Where(static entry => entry.Kind == EntryKind.Outflow).Sum(static entry => entry.Amount);
+    var entryQuery = Model.Scope is EntryScope.Rental or EntryScope.Flips ? "scope=" + Model.Scope : string.Empty;
+}
+
+<div class="heading rise">
+    <div>
+        <span class="eyebrow">@L.T("Entries", "Movimentos")</span>
+        <h1 class="title smaller">@name <span class="year">@Model.Month.Year</span></h1>
+    </div>
+    <nav class="stepper" aria-label="@L.T("Months", "Meses")">
+        <a href="@Link(previous, scope, null)" aria-label="@L.T("Earlier", "Antes")">@Icons.Get("left")</a>
+        <span class="when">@name <span class="num">@Model.Month.Year</span></span>
+        <a href="@Link(next, scope, null)" aria-label="@L.T("Later", "Depois")">@Icons.Get("right")</a>
+    </nav>
+</div>
+
+<section class="kpis rise rise-2">
+    <div class="kpi"><span class="eyebrow">@L.T("In", "Entradas")</span><div class="v pos">@L.Money(incoming)</div></div>
+    <div class="kpi"><span class="eyebrow">@L.T("Out", "Saídas")</span><div class="v out">@L.Money(outgoing)</div></div>
+    <div class="kpi"><span class="eyebrow">@L.T("Net", "Saldo")</span><div class="v @(incoming - outgoing < 0 ? "neg" : string.Empty)">@L.Signed(incoming - outgoing)</div></div>
+    <div class="kpi"><span class="eyebrow">@L.T("Written down", "Registados")</span><div class="v">@data.Entries.Count<small> @(data.Entries.Count == 1 ? L.T("entry", "movimento") : L.T("entries", "movimentos"))</small></div></div>
+</section>
+
+<section class="panel rise rise-3">
+    <partial name="_Quick" />
+
+    @if (Model.HasModules)
+    {
+        <div style="margin-top:22px">
+            <div class="seg" role="group" aria-label="@L.T("Part of life", "Parte da vida")">
+                <a href="@Link(data.Month, null, null)" aria-current="@(Model.Scope is null ? "true" : null)">@L.T("Everything", "Tudo")</a>
+                <a href="@Link(data.Month, "personal", null)" aria-current="@(Model.Scope == EntryScope.Personal ? "true" : null)">@L.T("Personal", "Pessoal")</a>
+                @if (Model.RentalEnabled)
+                {
+                    <a href="@Link(data.Month, "rental", null)" aria-current="@(Model.Scope == EntryScope.Rental ? "true" : null)">@L.T("Rental", "Alojamento")</a>
+                }
+                @if (Model.FlipsEnabled)
+                {
+                    <a href="@Link(data.Month, "flips", null)" aria-current="@(Model.Scope == EntryScope.Flips ? "true" : null)">@L.T("Buy & Sell", "Compra & Venda")</a>
+                }
+            </div>
+        </div>
+    }
+
+    @if (data.Categories.Count > 0 || data.HasTransfers || Model.Category is not null)
+    {
+        <nav class="chips" aria-label="@L.T("Categories", "Categorias")" style="@(Model.HasModules ? "margin-top:12px" : null)">
+            <a href="@Link(data.Month, scope, null)" aria-current="@(Model.Category is null ? "true" : null)">@L.T("All", "Todos")</a>
+            @foreach (var key in data.Categories)
+            {
+                <a href="@Link(data.Month, scope, key)" aria-current="@(Model.Category == key ? "true" : null)"><span class="dot" style="background:@Categories.Color(key)"></span>@L.Category(key)</a>
+            }
+            @if (data.HasTransfers)
+            {
+                <a href="@Link(data.Month, scope, "transfers")" aria-current="@(Model.Category == "transfers" ? "true" : null)">@L.T("Transfers", "Transferências")</a>
+            }
+        </nav>
+    }
+
+    @if (data.Entries.Count == 0)
+    {
+        <div class="empty">
+            <b>@L.T("Nothing here", "Nada por aqui")</b>
+            @(Model.Category is null
+                ? L.T($"No entries in {name} yet.", $"Ainda não há movimentos em {name}.")
+                : L.T($"No entries like that in {name}.", $"Não há movimentos assim em {name}."))
+            <div><button type="button" class="btn primary" data-entry="@entryQuery">@Icons.Get("plus")@L.T("New entry", "Novo movimento")</button></div>
+        </div>
+    }
+    else
+    {
+        <div style="margin-top:10px">
+            @foreach (var entry in data.Entries)
+            {
+                <partial name="_Row" model="entry" view-data='new ViewDataDictionary(ViewData) { ["Tags"] = Model.Scope is null }' />
+            }
+        </div>
+    }
+</section>

@@ -92,6 +92,7 @@ internal sealed class GlobalizationHelper(IHttpContextAccessor httpContextAccess
         ["Month"] = ("Month", "O mês"),
         ["TargetSale"] = ("Target sale price", "O preço de venda alvo"),
         ["WorksBudget"] = ("Works budget", "O orçamento das obras"),
+        ["AgreedPrice"] = ("Agreed price", "O preço acordado"),
         ["File"] = ("File", "O ficheiro"),
         ["Text"] = ("Quick add", "A entrada rápida"),
     };

@@ -1,0 +1,9 @@
+@* Quick add: type "9.80 lunch" and press Enter. The chips show what Ledger made of it; tap one to change it. *@
+<form class="quick" data-quick autocomplete="off">
+    <label for="quick-text">@L.T("Quick add", "Adicionar rápido")</label>
+    <input id="quick-text" type="text" name="text" enterkeyhint="done" placeholder="@L.T("9.80 lunch", "9,80 almoço")" aria-describedby="quick-hint" />
+    <div class="quick-chips" data-quick-chips hidden></div>
+    <button type="submit" class="btn primary small">@L.T("Add", "Adicionar")</button>
+</form>
+<p class="quick-hint" id="quick-hint" data-quick-hint data-default="@L.T("An amount and a few words. Start with + for money coming in. Enter to save.", "Um valor e umas palavras. Começa com + para dinheiro a entrar. Enter para guardar.")"
+   data-none="@L.T("Start with an amount, like 9.80 lunch.", "Começa por um valor, como 9,80 almoço.")">@L.T("An amount and a few words. Start with + for money coming in. Enter to save.", "Um valor e umas palavras. Começa com + para dinheiro a entrar. Enter para guardar.")</p>

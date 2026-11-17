@@ -1,0 +1,237 @@
+@model OverviewPageModel
+@{
+    Layout = "_App";
+    var data = Model.Data;
+    var month = Lang.MonthStart(data.Month);
+    var name = L.Month(month);
+    ViewData["Title"] = name;
+
+    var largest = data.Months.Count == 0 ? 0m : data.Months.Max(static line => Math.Abs(line.Net));
+    var whole = data.In + data.Out;
+    var empty = data.EntryCount == 0;
+    var previousName = L.Month(month.AddMonths(-1));
+
+    // The sentence under the big number says the one thing worth knowing about the month.
+    string story;
+    if (empty)
+    {
+        story = L.T($"Nothing written down for {name} yet.", $"Ainda não há nada registado em {name}.");
+    }
+    else if (data.Net >= 0 && data.SavingsRate is { } kept && data.In > 0)
+    {
+        story = L.T($"You kept {L.Percent(kept)} of what came in", $"Ficaste com {L.Percent(kept)} do que entrou");
+    }
+    else if (data.Net >= 0)
+    {
+        story = L.T("More came in than went out", "Entrou mais do que saiu");
+    }
+    else
+    {
+        story = L.T("More went out than came in", "Saiu mais do que entrou");
+    }
+
+    string? against = null;
+    if (!empty && data.PreviousNet is { } before && before != data.Net)
+    {
+        var gap = data.Net - before;
+        against = gap > 0
+            ? L.T($"{L.Money(gap)} more than {previousName}", $"mais {L.Money(gap)} do que em {previousName}")
+            : L.T($"{L.Money(-gap)} less than {previousName}", $"menos {L.Money(-gap)} do que em {previousName}");
+    }
+
+    var capUsed = data.CapUsed ?? 0m;
+    var capColor = capUsed >= 1m ? "var(--wine)" : capUsed >= .8m ? "var(--brass)" : "var(--in)";
+}
+
+<div class="heading rise">
+    <div>
+        <span class="eyebrow">@L.T("Overview", "Resumo")@(data.IsCurrentMonth ? " · " + L.T("this month so far", "este mês até agora") : string.Empty)</span>
+        <h1 class="title">@name <span class="year">@month.Year</span></h1>
+    </div>
+    <nav class="strip" aria-label="@L.T("Months", "Meses")">
+        <a class="step" href="/?month=@data.PreviousMonth" aria-label="@L.T("Earlier", "Antes")">@Icons.Get("left")</a>
+        @foreach (var line in data.Months)
+        {
+            var day = Lang.MonthStart(line.Month);
+            var bar = !line.HasEntries ? "none" : (line.Net < 0 ? "short" : string.Empty) + (line.InProgress ? " open" : string.Empty);
+            var title = L.Month(day) + " " + day.Year + (line.HasEntries ? " · " + L.Signed(line.Net) : string.Empty);
+            <a href="/?month=@line.Month" aria-current="@(line.Month == data.Month ? "true" : null)" title="@title" aria-label="@title">
+                <i class="bar-v @bar" style="@(line.HasEntries ? "height:" + Charts.BarHeight(line.Net, largest) + "px" : null)"></i>
+                @L.MonthShort(day)
+            </a>
+        }
+        <a class="step" href="/?month=@data.NextMonth" aria-label="@L.T("Later", "Depois")">@Icons.Get("right")</a>
+    </nav>
+</div>
+
+<section class="panel hero rise rise-2">
+    <div class="hero-net">
+        <span class="eyebrow">@L.T($"Net for {name}", $"Saldo de {name}")</span>
+        <div class="figure @(data.Net < 0 ? "neg" : empty ? "faint" : "pos")">@L.Signed(data.Net)</div>
+        <p>@if (against is null) { <b>@story.</b> } else { <b>@story</b> <span>— @against.</span> }</p>
+        @if (whole > 0)
+        {
+            <div class="split" role="img" aria-label="@L.T("In", "Entradas") @L.Money(data.In), @L.T("out", "saídas") @L.Money(data.Out)">
+                <span class="in" style="flex:@((data.In / whole).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)) 1 0"></span>
+                <span class="outflow" style="flex:@((data.Out / whole).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)) 1 0"></span>
+            </div>
+        }
+        <div class="split-keys">
+            <div><div class="k pos">@L.T("In", "Entradas")</div><div class="v">@L.Money(data.In)</div></div>
+            <div><div class="k out">@L.T("Out", "Saídas")</div><div class="v">@L.Money(data.Out)</div></div>
+        </div>
+    </div>
+    <div class="hero-side">
+        <div>
+            <div class="stat-line"><span class="l">@L.T("Net worth", "Património")</span><span class="v">@L.Money(data.NetWorth)</span></div>
+            <div class="stat-note">@L.T("Across", "Em") @L.Count(data.Accounts.Count, "account", "accounts", "conta", "contas")</div>
+        </div>
+        <div class="rule"></div>
+        <div>
+            <div class="stat-line"><span class="l">@L.T("Savings rate", "Taxa de poupança")</span><span class="v">@(data.SavingsRate is { } rate && rate >= 0 ? L.Percent(rate) : "—")</span></div>
+            <div class="stat-note">@(data.Net < 0 && data.In > 0 ? L.T("Nothing kept this month: more went out than came in", "Nada guardado este mês: saiu mais do que entrou") : L.T("The share of what came in that you kept", "A parte do que entrou com que ficaste"))</div>
+        </div>
+        <div class="rule"></div>
+        <div>
+            <div class="stat-line">
+                <span class="l">@L.T("Spending cap", "Teto de despesa")</span>
+                @if (data.Cap is { } cap)
+                {
+                    <span class="v">@L.Money(data.Out, cents: false) <small>@L.T("of", "de") @L.Money(cap, cents: false)</small></span>
+                }
+                else
+                {
+                    <button type="button" class="text-btn" data-open="cap-dialog">@L.T("Set one", "Definir")</button>
+                }
+            </div>
+            @if (data.Cap is { } limit)
+            {
+                <div class="meter" role="img" aria-label="@L.Percent(capUsed) @L.T("of the cap used", "do teto usado")"><i style="width:@Charts.Width100(capUsed);background:@capColor"></i></div>
+                <div class="stat-note">
+                    @(capUsed >= 1m
+                        ? L.T($"{L.Money(data.Out - limit)} over the cap", $"{L.Money(data.Out - limit)} acima do teto")
+                        : L.T($"{L.Money(limit - data.Out)} left · {L.Percent(capUsed)} used", $"Sobram {L.Money(limit - data.Out)} · {L.Percent(capUsed)} usado"))
+                    · <button type="button" class="text-btn" data-open="cap-dialog" data-set='{"amount":"@L.Input(limit)"}'>@L.T("change", "alterar")</button>
+                </div>
+            }
+            else
+            {
+                <div class="stat-note">@L.T("A ceiling for what goes out this month", "Um limite para o que sai este mês")</div>
+            }
+        </div>
+    </div>
+</section>
+
+@if (empty)
+{
+    <section class="panel rise rise-3">
+        <div class="empty">
+            <b>@L.T("A blank page", "Uma página em branco")</b>
+            @L.T("Write down the first thing that came in or went out and the month starts to take shape.", "Regista a primeira coisa que entrou ou saiu e o mês começa a ganhar forma.")
+            <div><button type="button" class="btn primary" data-entry="">@Icons.Get("plus")@L.T("New entry", "Novo movimento")</button></div>
+        </div>
+    </section>
+}
+else
+{
+    @if (data.Sources.Count > 0 && data.Targets.Count > 0)
+    {
+        <section class="panel flow-panel rise rise-3">
+            <div class="panel-head">
+                <h2>@L.T($"Where {name} went", $"Para onde foi {name}")</h2>
+                <span class="eyebrow">@L.T("Sources → what it paid for", "Origens → o que pagou")</span>
+            </div>
+            <p class="note flow-note" style="margin:-8px 0 10px">@L.T("Swipe to follow the money →", "Desliza para seguir o dinheiro →")</p>
+            <div class="scroll-x">@Charts.Flow(data.Sources, data.Targets, L, L.T($"The flow of {name}: where the money came from and where it went", $"O fluxo de {name}: de onde veio o dinheiro e para onde foi"))</div>
+        </section>
+    }
+
+    <div class="cols rise rise-4">
+        <section class="panel wide" data-switch>
+            <div class="panel-head center">
+                <h2>@L.T("Biggest movers", "O que mais pesou")</h2>
+                <div class="seg" role="group" aria-label="@L.T("Kind", "Tipo")">
+                    <button type="button" data-show="out" aria-pressed="true">@L.T("Outflows", "Saídas")</button>
+                    <button type="button" data-show="in" aria-pressed="false">@L.T("Inflows", "Entradas")</button>
+                </div>
+            </div>
+            <div data-pane="out">
+                @foreach (var part in data.Targets.Take(7))
+                {
+                    <a class="rank-row" href="/entries?month=@data.Month&scope=personal&category=@part.Key" style="display:block;color:inherit">
+                        <div class="rank-top">
+                            <span class="rank-name"><span class="dot" style="background:@Categories.Color(part.Key)"></span>@L.Category(part.Key)</span>
+                            <span class="rank-value">@L.Money(part.Amount) <span class="share">@L.Percent(part.Share)</span></span>
+                        </div>
+                        <div class="track"><i style="width:@Charts.Width100(data.Targets[0].Amount > 0 ? part.Amount / data.Targets[0].Amount : 0);background:@Categories.Color(part.Key)"></i></div>
+                    </a>
+                }
+                @if (data.Targets.Count == 0)
+                {
+                    <div class="empty">@L.T("Nothing went out this month.", "Não saiu nada este mês.")</div>
+                }
+            </div>
+            <div data-pane="in" hidden>
+                @foreach (var part in data.Sources.Take(7))
+                {
+                    <a class="rank-row" href="/entries?month=@data.Month&scope=personal&category=@part.Key" style="display:block;color:inherit">
+                        <div class="rank-top">
+                            <span class="rank-name"><span class="dot" style="background:@Categories.Color(part.Key)"></span>@L.Category(part.Key)</span>
+                            <span class="rank-value">@L.Money(part.Amount) <span class="share">@L.Percent(part.Share)</span></span>
+                        </div>
+                        <div class="track"><i style="width:@Charts.Width100(data.Sources[0].Amount > 0 ? part.Amount / data.Sources[0].Amount : 0);background:@Categories.Color(part.Key)"></i></div>
+                    </a>
+                }
+                @if (data.Sources.Count == 0)
+                {
+                    <div class="empty">@L.T("Nothing came in this month.", "Não entrou nada este mês.")</div>
+                }
+            </div>
+        </section>
+
+        <section class="panel narrow">
+            <div class="panel-head">
+                <h2>@L.T("Accounts", "Contas")</h2>
+                <a href="/accounts">@L.T("Manage", "Gerir")</a>
+            </div>
+            <partial name="_Accounts" model="data.Accounts" view-data='new ViewDataDictionary(ViewData) { ["Change"] = true }' />
+        </section>
+    </div>
+}
+
+<section class="panel rise rise-4">
+    <div class="panel-head">
+        <h2>@L.T($"{name}'s entries", $"Movimentos de {name}")</h2>
+        <span class="eyebrow">@L.Count(data.EntryCount, "entry", "entries", "movimento", "movimentos")</span>
+    </div>
+    <partial name="_Quick" />
+    <div style="margin-top:18px">
+        @foreach (var entry in data.Entries)
+        {
+            <partial name="_Row" model="entry" />
+        }
+    </div>
+    @if (data.EntryCount > data.Entries.Count)
+    {
+        <div class="list-foot"><a href="/entries?month=@data.Month&scope=personal">@L.T($"All {data.EntryCount} entries", $"Todos os {data.EntryCount} movimentos") →</a></div>
+    }
+</section>
+
+<partial name="_AccountDialog" />
+
+<dialog class="sheet" id="cap-dialog">
+    <form class="sheet-body" data-ajax action="/cap" method="post">
+        <div class="sheet-top">
+            <h2>@L.T("Spending cap", "Teto de despesa")</h2>
+            <button type="button" class="icon-btn bare" data-close aria-label="@L.T("Close", "Fechar")">@Icons.Get("x")</button>
+        </div>
+        <p class="lead">@L.T($"The most you'd like to see go out in {name}. Leave it empty for no cap.", $"O máximo que gostavas de ver sair em {name}. Deixa vazio para não ter teto.")</p>
+        <input type="hidden" name="month" value="@data.Month" />
+        <label class="field">
+            <span>@L.T("Cap for the month", "Teto do mês") (€)</span>
+            <input type="text" class="mono" name="amount" inputmode="decimal" placeholder="@L.Input(1400m)" autocomplete="off" />
+        </label>
+        <div class="form-msg" hidden role="alert"></div>
+        <div class="form-foot"><button type="submit" class="btn primary">@L.T("Save", "Guardar")</button></div>
+    </form>
+</dialog>

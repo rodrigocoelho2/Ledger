@@ -6,9 +6,9 @@
 @* Inside the form: the Sign in / Create account tabs (when anyone may create an account) and the messages. *@
 @if (Model.CanCreateAccount && !Model.IsFirstAccount)
 {
-    <nav class="seg au-tabs" aria-label="Account">
-        <a href="/sign-in@(query)" aria-current="@(active == "sign-in" ? "page" : null)">Sign in</a>
-        <a href="/create-account@(query)" aria-current="@(active == "create" ? "page" : null)">Create account</a>
+    <nav class="seg au-tabs" aria-label="@L.T("Account", "Conta")">
+        <a href="/sign-in@(query)" aria-current="@(active == "sign-in" ? "true" : null)">@L.T("Sign in", "Entrar")</a>
+        <a href="/create-account@(query)" aria-current="@(active == "create" ? "true" : null)">@L.T("Create account", "Criar conta")</a>
     </nav>
 }
 @if (Model.Errors.Count > 0)

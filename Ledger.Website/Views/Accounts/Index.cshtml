@@ -1,0 +1,76 @@
+@model AccountsPageModel
+@{
+    Layout = "_App";
+    ViewData["Title"] = L.T("Accounts", "Contas");
+    var worth = Model.Accounts.Sum(static account => account.Balance);
+    var positive = Model.Accounts.Where(static account => account.Balance > 0).ToList();
+    var sum = positive.Sum(static account => account.Balance);
+    string Tone(AccountKind kind) => kind switch
+    {
+        AccountKind.Savings => "var(--in)",
+        AccountKind.Investments => "var(--mauve)",
+        AccountKind.MealCard => "var(--blue)",
+        _ => "#B5B0BD",
+    };
+}
+
+<div class="heading rise">
+    <div>
+        <span class="eyebrow">@L.T("Accounts", "Contas")</span>
+        <h1 class="title smaller">@L.T("Where it sits", "Onde está")</h1>
+    </div>
+    <p class="heading-note">@L.T("Every entry moves the balance of its account. Drag an account by its handle to put the ones you use most on top.", "Cada movimento mexe no saldo da sua conta. Arrasta uma conta pela pega para pôr no topo as que mais usas.")</p>
+</div>
+
+<div class="cols rise rise-2" style="margin-top:0">
+    <section class="panel wide">
+        <div class="panel-head center">
+            <h2>@L.T("Your accounts", "As tuas contas")</h2>
+            <button type="button" class="btn small" data-open="account-dialog" data-set="{}">@Icons.Get("plus")@L.T("New account", "Nova conta")</button>
+        </div>
+        @if (Model.Accounts.Count == 0)
+        {
+            <div class="empty">
+                <b>@L.T("No accounts yet", "Ainda sem contas")</b>
+                @L.T("Add the first one: your main account, most likely.", "Adiciona a primeira: provavelmente a tua conta principal.")
+            </div>
+        }
+        else
+        {
+            <partial name="_Accounts" model="Model.Accounts" />
+        }
+    </section>
+
+    <div class="stack-col">
+        <section class="panel">
+            <span class="eyebrow">@L.T("Net worth", "Património")</span>
+            <div class="worth @(worth < 0 ? "neg" : string.Empty)" style="margin-top:8px">@L.Money(worth)</div>
+            <p class="note">@L.T("Everything in every account, added up.", "Tudo o que está em todas as contas, somado.")</p>
+            @if (sum > 0)
+            {
+                <div class="stackbar tall" style="margin-top:20px" role="img" aria-label="@L.T("How the money is spread across accounts", "Como o dinheiro se reparte pelas contas")">
+                    @foreach (var account in positive)
+                    {
+                        <span style="flex:@((account.Balance / sum).ToString("0.####", System.Globalization.CultureInfo.InvariantCulture)) 1 0;background:@Tone(account.Kind)" title="@account.Name · @L.Money(account.Balance)"></span>
+                    }
+                </div>
+                <div style="margin-top:10px">
+                    @foreach (var account in positive)
+                    {
+                        <div class="kv">
+                            <span class="name"><span class="dot" style="background:@Tone(account.Kind)"></span>@account.Name</span>
+                            <span class="value">@L.Money(account.Balance) <span class="share">@L.Percent(account.Balance / sum)</span></span>
+                        </div>
+                    }
+                </div>
+            }
+        </section>
+        <section class="panel">
+            <h2>@L.T("Moving money", "Mexer dinheiro")</h2>
+            <p class="note" style="margin-top:8px">@L.T("Money that goes from one account to another is a transfer: it changes both balances and never counts as spending.", "Dinheiro que passa de uma conta para outra é uma transferência: mexe nos dois saldos e nunca conta como despesa.")</p>
+            <button type="button" class="btn small" style="margin-top:14px" data-entry="kind=Transfer">@Icons.Get("arrow")@L.T("New transfer", "Nova transferência")</button>
+        </section>
+    </div>
+</div>
+
+<partial name="_AccountDialog" />

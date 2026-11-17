@@ -1,10 +1,7 @@
 @model Ledger.Website.Model.Account.AccountPageModel
 @{
-    ViewData["Title"] = "Sign in";
+    ViewData["Title"] = L.T("Sign in", "Entrar");
     ViewData["Tab"] = "sign-in";
-}
-@section Head {
-    <link rel="stylesheet" href="~/css/public.css" asp-append-version="true" />
 }
 
 <div class="au">
@@ -15,10 +12,8 @@
             @Html.AntiForgeryToken()
             <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
 
-            <div>
-                <h1>Sign in</h1>
-                <p class="muted">Your portfolio is waiting.</p>
-            </div>
+            <h1>@L.T("Sign in", "Entrar")</h1>
+            <p class="lead">@L.T("Your ledger is where you left it.", "O teu livro está onde o deixaste.")</p>
 
             <partial name="_AccountCard" model="Model" />
 
@@ -26,13 +21,13 @@
             {
                 <div class="au-demo">
                     @Icons.Get("sparkle")
-                    <span>Demo mode: sign in as <b>@demoUser</b> / <b>@Model.DemoPassword</b>.</span>
-                    <button type="button" class="btn small" data-demo-fill data-user="@demoUser" data-pass="@Model.DemoPassword">Try it</button>
+                    <span>@L.T("Demo mode:", "Modo demo:") <b>@demoUser</b> / <b>@Model.DemoPassword</b></span>
+                    <button type="button" class="btn small" data-demo-fill data-user="@demoUser" data-pass="@Model.DemoPassword">@L.T("Try it", "Experimentar")</button>
                 </div>
             }
 
             <label class="field">
-                User name
+                <span>@L.T("User name", "Nome de utilizador")</span>
                 <span class="au-in">
                     @Icons.Get("user")
                     <input name="userName" type="text" value="@Model.UserName" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus />
@@ -40,34 +35,34 @@
             </label>
 
             <label class="field">
-                Password
+                <span>@L.T("Password", "Palavra-passe")</span>
                 <span class="au-in">
                     @Icons.Get("lock")
                     <input id="password" name="password" type="password" autocomplete="current-password" required />
-                    <button type="button" class="password-toggle" data-for="password" aria-pressed="false" aria-label="Show password">@Icons.Get("eye")</button>
+                    <button type="button" class="password-toggle" data-for="password" aria-pressed="false" data-show="@L.T("Show password", "Mostrar palavra-passe")" data-hide="@L.T("Hide password", "Esconder palavra-passe")" aria-label="@L.T("Show password", "Mostrar palavra-passe")">@Icons.Get("eye")</button>
                 </span>
             </label>
 
-            <label class="au-check">
-                <input type="checkbox" name="remember" value="true" checked="@(Model.Remember ? "checked" : null)" />
-                <span>Keep me signed in on this device <small class="muted">(@Model.RememberDays days)</small></span>
+            <label class="check">
+                <input type="checkbox" name="remember" value="true" checked="@Model.Remember" />
+                <span>@L.T("Keep me signed in on this device", "Manter a sessão neste dispositivo") <small class="faint">(@L.Count(Model.RememberDays, "day", "days", "dia", "dias"))</small></span>
             </label>
 
-            <button class="btn wide" type="submit">Sign in @Icons.Get("arrow")</button>
+            <button class="btn primary wide" type="submit">@L.T("Sign in", "Entrar") @Icons.Get("arrow")</button>
 
             @if (Model.DiscordEnabled)
             {
-                <div class="au-or" aria-hidden="true"><span>or</span></div>
-                <a class="btn wide discord" href="/sign-in/discord?returnUrl=@Uri.EscapeDataString(Model.ReturnUrl)"><span class="discord-mark" aria-hidden="true"></span>Sign in with Discord</a>
+                <div class="au-or" aria-hidden="true"><span>@L.T("or", "ou")</span></div>
+                <a class="btn wide" href="/sign-in/discord?returnUrl=@Uri.EscapeDataString(Model.ReturnUrl)"><span class="discord-mark" aria-hidden="true"></span>@L.T("Sign in with Discord", "Entrar com o Discord")</a>
             }
 
             @if (Model.CanCreateAccount)
             {
-                <p class="au-fine">No account yet? <a href="/create-account">Create one</a></p>
+                <p class="au-fine">@L.T("No account yet?", "Ainda sem conta?") <a href="/create-account">@L.T("Create one", "Cria uma")</a></p>
             }
             else
             {
-                <p class="au-fine">No account yet? Ask whoever runs this Ledger to create one for you.</p>
+                <p class="au-fine">@L.T("No account yet? Ask whoever runs this Ledger to create one for you.", "Ainda sem conta? Pede a quem gere este Ledger para te criar uma.")</p>
             }
         </form>
     </main>

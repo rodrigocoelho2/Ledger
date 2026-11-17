@@ -51,6 +51,8 @@ internal sealed record DemoLedger(
 /// </summary>
 internal static class DemoData
 {
+    private static readonly string[] Guests = ["Sophie & Mark", "Lukas", "Ana & Tiago", "The Duponts", "Emma", "Marta & Rui", "Jonas", "Claire & Ben", "Inês", "The Okafors", "Yuki", "Pedro & Sara", "Hannah", "Léa & Hugo", "Tomás"];
+
     /// <summary>The everyday account.</summary>
     public const string Main = "Main account";
 
@@ -71,6 +73,16 @@ internal static class DemoData
 
     /// <summary>The project that has only just started.</summary>
     public const string OpenProject = "T1 Infantado";
+
+    /// <summary>The price agreed for a sample project (the deposit and the deed each pay part of it).</summary>
+    /// <param name="project">The project's name.</param>
+    /// <returns>The price, or null for a name that isn't a sample project.</returns>
+    public static decimal? AgreedPrice(string project) => project switch
+    {
+        SoldProject => 92000.00m,
+        OpenProject => 75000.00m,
+        _ => null,
+    };
 
     /// <summary>How many months the sample covers, the one we are in included.</summary>
     public const int MonthCount = 6;
@@ -189,8 +201,9 @@ internal static class DemoData
 
     private static void Rental(List<DemoEntry> entries, DateOnly thisMonth)
     {
+        var guest = 0;
         void Booking(DateOnly month, int day, string channel, int nights, decimal amount) =>
-            entries.Add(new DemoEntry(Day(month, day), EntryKind.Inflow, EntryScope.Rental, $"{channel} · {nights} nights", "bookings", amount, Property, Nights: nights, Channel: channel));
+            entries.Add(new DemoEntry(Day(month, day), EntryKind.Inflow, EntryScope.Rental, "Stay · " + Guests[guest++ % Guests.Length], "bookings", amount, Property, Nights: nights, Channel: channel));
 
         void Cost(DateOnly month, int day, string name, string category, decimal amount) =>
             entries.Add(new DemoEntry(Day(month, day), EntryKind.Outflow, EntryScope.Rental, name, category, amount, Property));

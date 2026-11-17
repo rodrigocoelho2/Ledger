@@ -291,7 +291,7 @@ internal sealed class EntryService(
 
         if (scope == EntryScope.Flips && kind != EntryKind.Transfer && project is null && projectName.Length > 0)
         {
-            project = await _projectRepository.SaveAsync(userId, null, projectName, null, null);
+            project = await _projectRepository.SaveAsync(userId, null, projectName, null, null, null);
         }
 
         var saved = await _entryRepository.SaveAsync(userId, entryId, new EntryRow
@@ -364,9 +364,12 @@ internal sealed class EntryService(
         // A plus sign always means money coming in, whatever the same words were last time.
         var kind = plus ? EntryKind.Inflow : last is null ? EntryKind.Outflow : (EntryKind)last.Kind;
         var remembered = last is not null && (EntryKind)last.Kind == kind;
+        // Words never seen before: a guess from the words themselves, and a meal goes on the meal card when there is one.
+        var guessed = remembered ? null : CategoryGuess.For(name, kind);
         var account = remembered && accounts.FirstOrDefault(row => row.AccountUniqueID == last!.AccountUniqueID) is { } same
             ? same
-            : accounts.FirstOrDefault();
+            : (!remembered && kind == EntryKind.Outflow && CategoryGuess.IsMeal(name) ? accounts.FirstOrDefault(static row => row.Kind == (byte)AccountKind.MealCard) : null)
+                ?? accounts.FirstOrDefault();
 
         return ServiceApiResponse<QuickAddDTO>.Success(new QuickAddDTO
         {
@@ -375,7 +378,7 @@ internal sealed class EntryService(
             Name = name,
             Kind = kind,
             Scope = remembered ? (EntryScope)last!.Scope : EntryScope.Personal,
-            Category = remembered && Categories.Find(last!.Category) is { } category ? category.Key : Categories.Fallback(kind),
+            Category = remembered && Categories.Find(last!.Category) is { } category ? category.Key : guessed ?? Categories.Fallback(kind),
             AccountId = Id(account?.AccountUniqueID),
             AccountName = account?.Name,
             Date = _clock.Today,

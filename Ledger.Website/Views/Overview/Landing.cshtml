@@ -1,0 +1,95 @@
+@model LandingModel
+@{
+    ViewData["Title"] = "Ledger";
+    var back = Context.Request.Path.Value ?? "/";
+
+    // The example on the page: the flow of a made-up month, drawn by the same code as the real one.
+    var sources = new List<FlowPartDTO>
+    {
+        new() { Key = "salary", Amount = 1850m },
+        new() { Key = "meal-allowance", Amount = 211.20m },
+        new() { Key = "freelance", Amount = 93.70m },
+    };
+    var targets = new List<FlowPartDTO>
+    {
+        new() { Key = "home", Amount = 650m },
+        new() { Key = "groceries", Amount = 286.40m },
+        new() { Key = "bills", Amount = 121.85m },
+        new() { Key = "transport", Amount = 96.30m },
+        new() { Key = "leisure", Amount = 80.19m },
+        new() { Key = "gym", Amount = 45m },
+        new() { Key = "health", Amount = 48m },
+    };
+}
+
+<div class="wrap">
+    <header class="pub-top">
+        <a class="brand" href="/">@Icons.Logo()Ledger</a>
+        <div class="right">
+            <nav class="lang-switch" aria-label="@L.T("Language", "Idioma")">
+                <a href="/language/en?returnUrl=@Uri.EscapeDataString(back)" aria-current="@(L.Pt ? null : "true")">EN</a>
+                <a href="/language/pt?returnUrl=@Uri.EscapeDataString(back)" aria-current="@(L.Pt ? "true" : null)">PT</a>
+            </nav>
+            @if (Model.SignedIn)
+            {
+                <a class="btn primary small" href="/">@L.T("Open Ledger", "Abrir o Ledger")</a>
+            }
+            else
+            {
+                <a class="btn small" href="/sign-in">@L.T("Sign in", "Entrar")</a>
+            }
+        </div>
+    </header>
+
+    <section class="pub-hero rise">
+        <span class="eyebrow">@L.T("A calm book for your money", "Um livro calmo para o teu dinheiro")</span>
+        <h1 style="margin-top:14px">@L.T("What came in, what went out,", "O que entrou, o que saiu,") <em>@L.T("what was left.", "o que sobrou.")</em></h1>
+        <p>@L.T("Write down the month in a line at a time — “9.80 lunch” — and Ledger shows where the money went, how much you kept and where it sits. Add a short-term rental or a flip when you need them; leave them out when you don't.", "Regista o mês uma linha de cada vez — “9,80 almoço” — e o Ledger mostra para onde foi o dinheiro, quanto guardaste e onde está. Junta um alojamento local ou uma compra e venda quando precisares; deixa-os de fora quando não.")</p>
+        <div class="pub-cta">
+            @if (Model.SignedIn)
+            {
+                <a class="btn primary" href="/">@L.T("Open your ledger", "Abrir o teu livro")@Icons.Get("arrow")</a>
+            }
+            else
+            {
+                <a class="btn primary" href="/sign-in">@L.T("Sign in", "Entrar")@Icons.Get("arrow")</a>
+                @if (Model.CanCreateAccount)
+                {
+                    <a class="btn" href="/create-account">@L.T("Create an account", "Criar conta")</a>
+                }
+            }
+        </div>
+    </section>
+
+    <section class="panel pub-show rise rise-2">
+        <div class="panel-head">
+            <h2>@L.T("Where October went", "Para onde foi outubro")</h2>
+            <span class="eyebrow">@L.T("Example month", "Mês de exemplo")</span>
+        </div>
+        <div class="scroll-x">@Charts.Flow(sources, targets, L, L.T("An example month: salary, meal allowance and freelance on the left, what they paid for on the right", "Um mês de exemplo: salário, subsídio de refeição e trabalho independente à esquerda, o que pagaram à direita"))</div>
+        <p class="cap">@L.T("Each ribbon is as thick as its amount. What's left over is the last one on the right.", "Cada fita tem a espessura do seu valor. O que sobrou é a última à direita.")</p>
+    </section>
+
+    <div class="pub-three rise rise-3">
+        <section class="panel">
+            <span class="eyebrow"><span class="dot" style="background:var(--in)"></span>@L.T("Personal · always on", "Pessoal · sempre ligado")</span>
+            <h2>@L.T("Your month, in one look", "O teu mês, num relance")</h2>
+            <p>@L.T("Net for the month, savings rate, a spending cap, the accounts — main, savings, investments, meal card — and every line of the ledger.", "O saldo do mês, a taxa de poupança, um teto de despesa, as contas — principal, poupança, investimentos, cartão refeição — e cada linha do livro.")</p>
+        </section>
+        <section class="panel">
+            <span class="eyebrow"><span class="dot" style="background:var(--brass)"></span>@L.T("Short-term rental · optional", "Alojamento local · opcional")</span>
+            <h2>@L.T("Nights, not just numbers", "Noites, não só números")</h2>
+            <p>@L.T("Bookings on a calendar, occupancy, the nightly rate, and what's left of every €100 a guest pays once cleaning and fees are out.", "Reservas num calendário, ocupação, o preço por noite e o que sobra de cada 100 € que um hóspede paga, depois das limpezas e comissões.")</p>
+        </section>
+        <section class="panel">
+            <span class="eyebrow"><span class="dot" style="background:var(--mauve)"></span>@L.T("Buy & Sell · optional", "Compra & Venda · opcional")</span>
+            <h2>@L.T("A project per property", "Um projeto por imóvel")</h2>
+            <p>@L.T("From the deposit to the sale: every cost filed under its project, the timeline, the return, and what it needs to sell for.", "Do sinal à venda: cada custo no seu projeto, a linha do tempo, o retorno e por quanto tem de ser vendido.")</p>
+        </section>
+    </div>
+
+    <footer class="pub-foot">
+        <span>Ledger · @L.T("self-hosted — your numbers stay on your server", "alojado por ti — os teus números ficam no teu servidor")</span>
+        <span>EN · PT</span>
+    </footer>
+</div>

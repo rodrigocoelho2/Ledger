@@ -1,0 +1,27 @@
+@model List<AccountDTO>
+@{
+    // The accounts, in the person's order: drag one by its handle (or move it with the arrow keys) to reorder.
+    var change = ViewData["Change"] is true;
+}
+<div class="acct-list" data-reorder="/accounts/order">
+    @foreach (var account in Model)
+    {
+        var set = System.Text.Json.JsonSerializer.Serialize(new { id = account.Id, name = account.Name, kind = account.Kind.ToString(), openingBalance = L.Input(account.OpeningBalance) });
+        <div class="acct" data-id="@account.Id">
+            <button type="button" class="acct-grip" aria-label="@L.T("Move", "Mover") @account.Name" title="@L.T("Drag to reorder", "Arrasta para reordenar")">@Icons.Grip()</button>
+            <span class="acct-tick @Lang.Tick(account.Kind)"></span>
+            <span class="acct-main">
+                <span class="acct-name">@account.Name</span>
+                <span class="acct-kind">@L.Kind(account.Kind)</span>
+            </span>
+            <span class="acct-money">
+                <span class="b">@L.Money(account.Balance)</span>
+                @if (change && account.MonthChange is { } moved)
+                {
+                    <span class="d">@(moved == 0 ? L.T("no change", "sem alteração") : L.Signed(moved))</span>
+                }
+            </span>
+            <button type="button" class="row-more" data-open="account-dialog" data-set="@set" aria-label="@L.T("Change", "Alterar") @account.Name">@Icons.Dots()</button>
+        </div>
+    }
+</div>

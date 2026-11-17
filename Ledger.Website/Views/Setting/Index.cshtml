@@ -1,0 +1,203 @@
+@model SettingsPageModel
+@{
+    Layout = "_App";
+    ViewData["Title"] = L.T("Settings", "Definições");
+    var me = Model.Me;
+    var discord = Model.DiscordNote switch
+    {
+        "linked" => (Ok: true, Text: L.T("Discord linked. You can sign in with it from now on.", "Discord ligado. A partir de agora podes entrar com ele.")),
+        "unlinked" => (Ok: true, Text: L.T("Discord unlinked.", "Discord desligado.")),
+        "taken" => (Ok: false, Text: L.T("That Discord account is already linked to another user here.", "Essa conta Discord já está ligada a outro utilizador aqui.")),
+        "needs-password" => (Ok: false, Text: L.T("Set a password first: without Discord you'd have no way to sign in.", "Define primeiro uma palavra-passe: sem o Discord ficavas sem forma de entrar.")),
+        "failed" => (Ok: false, Text: L.T("The Discord step didn't finish. Try again.", "O passo do Discord não terminou. Tenta outra vez.")),
+        _ => (Ok: true, Text: (string?)null),
+    };
+}
+
+<div class="settings">
+    <div class="heading rise">
+        <div>
+            <span class="eyebrow">@L.T("Settings", "Definições")</span>
+            <h1 class="title smaller">@L.T("Make it yours", "À tua maneira")</h1>
+        </div>
+    </div>
+
+    @if (Model.Notice is not null)
+    {
+        <div class="msg" role="status">@Model.Notice</div>
+    }
+    @if (Model.Problem is not null)
+    {
+        <div class="msg err" role="alert">@Model.Problem</div>
+    }
+    @if (Model.DemoMode)
+    {
+        <div class="msg" role="note">@L.T("This is the sample ledger (demo mode): everything lives in memory and comes back when the app restarts.", "Este é o livro de exemplo (modo demo): fica tudo em memória e volta ao início quando a aplicação reinicia.")</div>
+    }
+
+    <section class="rise rise-2" id="modules">
+        <span class="eyebrow">@L.T("Modules", "Módulos")</span>
+        <p class="note" style="margin:6px 0 12px">@L.T("Your main account is always there. Switch on only the parts of life you keep books for; switching one off hides its tab and deletes nothing.", "A tua conta principal está sempre lá. Liga só as partes da vida de que fazes contas; desligar uma esconde o separador e não apaga nada.")</p>
+        <div class="module on">
+            <div class="module-top">
+                <span class="module-name"><span class="dot" style="background:var(--in)"></span>@L.T("Personal", "Pessoal")</span>
+                <span class="eyebrow">@L.T("Always on", "Sempre ligado")</span>
+            </div>
+            <p>@L.T("Salary, groceries, bills, the gym: the month of your own money, across your accounts.", "Salário, supermercado, contas, o ginásio: o mês do teu dinheiro, nas tuas contas.")</p>
+        </div>
+        <div class="module rental @(Model.RentalEnabled ? "on" : null)">
+            <div class="module-top">
+                <span class="module-name"><span class="dot" style="background:var(--brass)"></span>@L.T("Short-term rental", "Alojamento local")</span>
+                <button type="button" class="switch" role="switch" aria-checked="@(Model.RentalEnabled ? "true" : "false")" data-module="rental" style="--accent:var(--brass)" aria-label="@L.T("Short-term rental", "Alojamento local")"><i></i></button>
+            </div>
+            <p>@L.T("Bookings, nights and occupancy, cleaning and platform fees, and the margin that is left each month.", "Reservas, noites e ocupação, limpezas e comissões, e a margem que sobra em cada mês.")</p>
+        </div>
+        <div class="module flips @(Model.FlipsEnabled ? "on" : null)">
+            <div class="module-top">
+                <span class="module-name"><span class="dot" style="background:var(--mauve)"></span>@L.T("Buy & Sell", "Compra & Venda")</span>
+                <button type="button" class="switch" role="switch" aria-checked="@(Model.FlipsEnabled ? "true" : "false")" data-module="flips" style="--accent:var(--mauve)" aria-label="@L.T("Buy & Sell", "Compra & Venda")"><i></i></button>
+            </div>
+            <p>@L.T("Properties you buy, fix up and sell: every cost by project, the timeline and the return when it sells.", "Imóveis que compras, remodelas e vendes: cada custo por projeto, a linha do tempo e o retorno na venda.")</p>
+        </div>
+        <div style="margin-top:14px">
+            <span class="eyebrow">@L.T("Your tabs", "Os teus separadores")</span>
+            <div class="tabs-now" data-tabs-now>
+                <span>@L.T("Overview", "Resumo")</span><span>@L.T("Entries", "Movimentos")</span><span>@L.T("Accounts", "Contas")</span>
+                <span data-tab="rental" hidden="@(!Model.RentalEnabled)"><span class="dot" style="background:var(--brass)"></span>@L.T("Rental", "Alojamento")</span>
+                <span data-tab="flips" hidden="@(!Model.FlipsEnabled)"><span class="dot" style="background:var(--mauve)"></span>@L.T("Buy & Sell", "Compra & Venda")</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel rise rise-3" id="look" style="margin-top:28px">
+        <div class="panel-head"><h2>@L.T("Look and language", "Aspeto e idioma")</h2></div>
+        <div class="set-row">
+            <div class="what"><b>@L.T("Language", "Idioma")</b><span>@L.T("Words, dates and the way amounts are written.", "Palavras, datas e a forma de escrever os valores.")</span></div>
+            <div class="act">
+                <div class="seg" role="group" aria-label="@L.T("Language", "Idioma")">
+                    <button type="button" data-language="en" aria-pressed="@(L.Pt ? "false" : "true")">English</button>
+                    <button type="button" data-language="pt" aria-pressed="@(L.Pt ? "true" : "false")">Português</button>
+                </div>
+            </div>
+        </div>
+        <div class="set-row">
+            <div class="what"><b>@L.T("Look", "Aspeto")</b><span>@L.T("Kept on this device only.", "Guardado só neste dispositivo.")</span></div>
+            <div class="act">
+                <div class="seg" role="group" aria-label="@L.T("Look", "Aspeto")">
+                    <button type="button" data-theme-set="dark" aria-pressed="true">@Icons.Get("moon")&nbsp;@L.T("Dark", "Escuro")</button>
+                    <button type="button" data-theme-set="light" aria-pressed="false">@Icons.Get("sun")&nbsp;@L.T("Light", "Claro")</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel rise rise-4" id="files">
+        <div class="panel-head"><h2>@L.T("Your data", "Os teus dados")</h2></div>
+        <div class="set-row">
+            <div class="what"><b>@L.T("Export", "Exportar")</b><span>@L.T("CSV opens in Excel or Numbers. JSON is the complete backup, with accounts, projects and caps.", "O CSV abre no Excel ou no Numbers. O JSON é a cópia completa, com contas, projetos e tetos.")</span></div>
+            <div class="act">
+                <a class="btn small" href="/settings/export.csv" download>@Icons.Get("download")CSV</a>
+                <a class="btn small" href="/settings/export.json" download>@Icons.Get("download")JSON</a>
+            </div>
+        </div>
+        <form class="set-row" data-ajax data-result action="/settings/import" method="post" enctype="multipart/form-data">
+            <div class="what">
+                <b>@L.T("Import", "Importar")</b>
+                <span>@L.T("A CSV or JSON exported from Ledger (the old single-file version too). Entries that are already here are skipped, so importing the same file twice is safe.", "Um CSV ou JSON exportado do Ledger (também da versão antiga de um só ficheiro). Os movimentos que já cá estão são ignorados, por isso importar o mesmo ficheiro duas vezes é seguro.")</span>
+                <input class="file-pick" type="file" name="file" accept=".csv,.json,text/csv,application/json" required style="margin-top:10px" aria-label="@L.T("File to import", "Ficheiro a importar")" />
+                <label class="check"><input type="checkbox" name="replace" value="true" />@L.T("Erase what is here first and keep only the file", "Apagar primeiro o que cá está e ficar só com o ficheiro")</label>
+                <div class="form-msg" hidden role="alert"></div>
+            </div>
+            <div class="act"><button type="submit" class="btn small">@Icons.Get("upload")@L.T("Import", "Importar")</button></div>
+        </form>
+        <div class="set-row">
+            <div class="what"><b>@L.T("Start over", "Começar do zero")</b><span>@L.T("Erases every entry, account, project and cap, and leaves you with four empty accounts. It can't be undone: export first if in doubt.", "Apaga todos os movimentos, contas, projetos e tetos, e deixa-te com quatro contas vazias. Não dá para desfazer: exporta primeiro se tiveres dúvidas.")</span></div>
+            <div class="act"><button type="button" class="btn small danger" data-post="/settings/reset" data-confirm>@Icons.Get("trash")@L.T("Erase everything", "Apagar tudo")</button></div>
+        </div>
+    </section>
+
+    <section class="panel" id="account">
+        <div class="panel-head">
+            <h2>@L.T("Your account", "A tua conta")</h2>
+            <span class="eyebrow">@Model.UserName@(Model.IsAdmin ? " · admin" : string.Empty)</span>
+        </div>
+        @if (Model.DiscordEnabled && me is not null)
+        {
+            <div class="set-row" id="discord">
+                <div class="what">
+                    <b>Discord</b>
+                    <span>@(me.DiscordLinked ? L.T("Linked to", "Ligado a") + " " + me.DiscordName : L.T("Link it to sign in without a password.", "Liga-o para entrares sem palavra-passe."))</span>
+                    @if (discord.Text is not null)
+                    {
+                        <div class="form-msg @(discord.Ok ? "ok" : null)" role="status">@discord.Text</div>
+                    }
+                </div>
+                <div class="act">
+                    <form method="post" action="@(me.DiscordLinked ? "/settings/discord/unlink" : "/settings/discord")">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn small"><span class="discord-mark" aria-hidden="true"></span>@(me.DiscordLinked ? L.T("Unlink", "Desligar") : L.T("Link Discord", "Ligar Discord"))</button>
+                    </form>
+                </div>
+            </div>
+        }
+        @if (!Model.DemoMode)
+        {
+            <form class="set-row" data-ajax action="/settings/password" method="post" autocomplete="off">
+                <div class="what">
+                    <b>@(me?.HasPassword == false ? L.T("Set a password", "Definir palavra-passe") : L.T("Change password", "Mudar palavra-passe"))</b>
+                    <span>@L.T("Your other devices are signed out when it changes.", "Os teus outros dispositivos são desligados quando muda.")</span>
+                    <div class="field-row" style="margin-top:4px">
+                        @if (me?.HasPassword != false)
+                        {
+                            <label class="field"><span>@L.T("Current", "Atual")</span><input type="password" name="currentPassword" autocomplete="current-password" required /></label>
+                        }
+                        <label class="field"><span>@L.T("New", "Nova")</span><input type="password" name="newPassword" autocomplete="new-password" minlength="8" required /></label>
+                    </div>
+                    <div class="form-msg" hidden role="alert"></div>
+                </div>
+                <div class="act"><button type="submit" class="btn small">@L.T("Save", "Guardar")</button></div>
+            </form>
+        }
+        <div class="set-row">
+            <div class="what"><b>@L.T("Sign out", "Sair")</b><span>@L.T("On this device.", "Neste dispositivo.")</span></div>
+            <div class="act">
+                <form method="post" action="/sign-out">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn small">@Icons.Get("logout")@L.T("Sign out", "Sair")</button>
+                </form>
+            </div>
+        </div>
+        @if (!Model.DemoMode)
+        {
+            <div class="set-row">
+                <div class="what"><b>@L.T("Delete my account", "Apagar a minha conta")</b><span>@L.T("The account and its whole ledger, for good.", "A conta e todo o seu livro, de vez.")</span></div>
+                <div class="act"><button type="button" class="btn small danger" data-post="/settings/delete-user" data-confirm data-then="/">@L.T("Delete account", "Apagar conta")</button></div>
+            </div>
+        }
+    </section>
+
+    @if (Model.IsAdmin && Model.Users.Count > 1)
+    {
+        <section class="panel" id="people">
+            <div class="panel-head">
+                <h2>@L.T("People", "Pessoas")</h2>
+                <span class="eyebrow">@L.Count(Model.Users.Count, "user", "users", "utilizador", "utilizadores")</span>
+            </div>
+            @foreach (var user in Model.Users)
+            {
+                <div class="set-row">
+                    <div class="what">
+                        <b>@user.UserName@(user.Role == UserRole.Admin ? " · admin" : string.Empty)</b>
+                        <span>@(user.LastSignInAt is { } seen ? L.T("Last signed in", "Última entrada a") + " " + L.FullDay(DateOnly.FromDateTime(Clock.Local(seen))) : L.T("Never signed in", "Nunca entrou"))</span>
+                    </div>
+                    @if (user.Id != me?.Id)
+                    {
+                        <div class="act"><button type="button" class="btn small danger" data-post="/settings/delete-user" data-id="@user.Id" data-confirm>@L.T("Delete", "Apagar")</button></div>
+                    }
+                </div>
+            }
+        </section>
+    }
+
+    <p class="note" style="margin-top:24px;text-align:center">Ledger @AppPageModel.CurrentVersion · <a href="/about">@L.T("What is Ledger?", "O que é o Ledger?")</a></p>
+</div>

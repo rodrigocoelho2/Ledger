@@ -1,0 +1,196 @@
+@model RentalPageModel
+@{
+    Layout = "_App";
+    var data = Model.Data;
+    var month = Lang.MonthStart(data.Month);
+    var name = L.Month(month);
+    ViewData["Title"] = L.T("Rental", "Alojamento") + " · " + name;
+    var days = Enumerable.Range(1, data.NightsInMonth).Select(number => new DateOnly(month.Year, month.Month, number)).ToList();
+    var placed = data.Bookings.Where(static booking => booking.Span > 0).ToList();
+    var paid = data.Bookings.Where(static booking => booking.PaidThisMonth).ToList();
+    var kept = data.MarginShare is { } share ? Math.Round(share * 100m) : (decimal?)null;
+    var largestYear = data.YearMonths.Count == 0 ? 0m : data.YearMonths.Max(static line => Math.Abs(line.Net));
+    var empty = data.Entries.Count == 0 && placed.Count == 0;
+}
+
+<div class="heading rise">
+    <div>
+        <span class="eyebrow brass">@L.T("Short-term rental", "Alojamento local")</span>
+        <h1 class="title smaller">@name <span class="year">@month.Year</span></h1>
+    </div>
+    <nav class="stepper" aria-label="@L.T("Months", "Meses")">
+        <a href="/rental?month=@data.PreviousMonth" aria-label="@L.T("Earlier", "Antes")">@Icons.Get("left")</a>
+        <span class="when">@name <span class="num">@month.Year</span></span>
+        <a href="/rental?month=@data.NextMonth" aria-label="@L.T("Later", "Depois")">@Icons.Get("right")</a>
+    </nav>
+</div>
+
+<section class="kpis rental rise rise-2">
+    <div class="kpi">
+        <span class="eyebrow">@L.T("Revenue", "Receita")</span>
+        <div class="v">@L.Money(data.Revenue)</div>
+        <div class="s">@L.Count(data.BookingCount, "booking", "bookings", "reserva", "reservas")@(data.AverageBooking is { } average ? " · " + L.Money(average, cents: false) + " " + L.T("each", "cada") : string.Empty)</div>
+    </div>
+    <div class="kpi">
+        <span class="eyebrow">@L.T("Costs", "Custos")</span>
+        <div class="v">@L.Money(data.Costs)</div>
+        <div class="s">@(data.CostShare is { } costShare ? L.Percent(costShare) + " " + L.T("of revenue", "da receita") : L.T("No revenue to compare with", "Sem receita para comparar"))</div>
+    </div>
+    <div class="kpi">
+        <span class="eyebrow">@L.T("Margin", "Margem")</span>
+        <div class="v @(data.Margin < 0 ? "neg" : "brass")">@L.Signed(data.Margin)</div>
+        <div class="s">@(data.MarginShare is { } marginShare ? L.Percent(marginShare) + " " + L.T("of revenue kept", "da receita fica contigo") : "—")</div>
+    </div>
+    <div class="kpi">
+        <span class="eyebrow">@L.T("Occupancy", "Ocupação")</span>
+        <div class="v">@L.Percent(data.Occupancy)<small> · @data.NightsBooked/@data.NightsInMonth</small></div>
+        <div class="s">@(data.NightlyRate is { } nightly ? L.Money(nightly) + " " + L.T("a night on average", "por noite em média") : L.T("nights booked", "noites reservadas"))</div>
+    </div>
+</section>
+
+@if (empty)
+{
+    <section class="panel rise rise-3">
+        <div class="empty">
+            <b>@L.T("A quiet month", "Um mês sossegado")</b>
+            @L.T($"No bookings or costs written down for {name}. Add a booking with its nights and the calendar fills in.", $"Não há reservas nem custos registados em {name}. Adiciona uma reserva com as noites e o calendário preenche-se.")
+            <div><button type="button" class="btn primary" data-entry="scope=Rental&kind=Inflow">@Icons.Get("plus")@L.T("New booking", "Nova reserva")</button></div>
+        </div>
+    </section>
+}
+else
+{
+    <section class="panel rise rise-3">
+        <div class="panel-head">
+            <h2>@L.T($"{name} nights", $"Noites de {name}")</h2>
+            <span class="eyebrow">@L.T($"{data.NightsBooked} of {data.NightsInMonth} booked", $"{data.NightsBooked} de {data.NightsInMonth} reservadas")</span>
+        </div>
+        <div class="scroll-x">
+            <div class="nights" style="--days:@data.NightsInMonth">
+                <div class="nights-days" aria-hidden="true">
+                    @foreach (var day in days)
+                    {
+                        <span class="@(day.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday ? "we" : null)">@L.Weekday(day)<br />@day.Day</span>
+                    }
+                </div>
+                <div class="nights-box">
+                    <div class="nights-cells" aria-hidden="true">
+                        @foreach (var day in days)
+                        {
+                            <i class="@(day.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday ? "we" : null)"></i>
+                        }
+                    </div>
+                    <div class="nights-bars">
+                        @foreach (var booking in placed)
+                        {
+                            var who = string.IsNullOrEmpty(booking.Channel) ? booking.Name : booking.Channel;
+                            var label = booking.Span >= 6
+                                ? who + " · " + L.Count(booking.Nights, "night", "nights", "noite", "noites") + " · " + L.Money(booking.Amount, cents: false)
+                                : booking.Span >= 3 ? who + " · " + L.Money(booking.Amount, cents: false) : who;
+                            <div style="grid-column:@booking.StartDay / span @booking.Span" title="@booking.Name · @L.Stretch(booking.CheckIn, booking.CheckOut)">@label</div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+        <p class="note">@L.T("A booking is an inflow in the Bookings category with its number of nights; the bar starts on the day you wrote it down for.", "Uma reserva é uma entrada na categoria Reservas com o número de noites; a barra começa no dia em que a registaste.")</p>
+    </section>
+
+    <div class="cols rise rise-4">
+        <section class="panel wide">
+            <div class="panel-head"><h2>@L.T("Where the revenue goes", "Para onde vai a receita")</h2></div>
+            @if (data.Revenue > 0)
+            {
+                <div class="stackbar" role="img" aria-label="@L.T("Each cost as a share of revenue, and what is left", "Cada custo como parte da receita, e o que sobra")">
+                    @if (data.Margin > 0)
+                    {
+                        <span style="flex:@((data.Margin / data.Revenue).ToString("0.####", System.Globalization.CultureInfo.InvariantCulture)) 1 0;background:var(--in)"></span>
+                    }
+                    @foreach (var part in data.Split)
+                    {
+                        <span style="flex:@(part.Share.ToString("0.####", System.Globalization.CultureInfo.InvariantCulture)) 1 0;background:@Categories.Color(part.Key);opacity:.8"></span>
+                    }
+                </div>
+                @if (kept is { } perHundred)
+                {
+                    <p class="note" style="margin:12px 0 6px">
+                        @(perHundred >= 0
+                            ? L.T($"Of every €100 a guest pays, €{perHundred:0} stays with you.", $"De cada 100 € que um hóspede paga, {perHundred:0} € ficam contigo.")
+                            : L.T($"For every €100 a guest paid, the month cost you €{100 - perHundred:0}.", $"Por cada 100 € que um hóspede pagou, o mês custou-te {100 - perHundred:0} €."))
+                    </p>
+                }
+                @if (data.Margin > 0)
+                {
+                    <div class="kv">
+                        <span class="name pos"><span class="dot" style="background:var(--in)"></span>@L.T("Margin — stays with you", "Margem — fica contigo")</span>
+                        <span class="value pos">@L.Money(data.Margin) <span class="share pos">@L.Percent(data.MarginShare ?? 0)</span></span>
+                    </div>
+                }
+            }
+            @foreach (var part in data.Split)
+            {
+                <div class="kv">
+                    <span class="name"><span class="dot" style="background:@Categories.Color(part.Key)"></span>@L.Category(part.Key)</span>
+                    <span class="value">@L.Money(part.Amount) <span class="share">@L.Percent(part.Share)</span></span>
+                </div>
+            }
+            @if (data.Split.Count == 0)
+            {
+                <div class="empty">@L.T("No costs this month.", "Sem custos este mês.")</div>
+            }
+        </section>
+
+        <div class="stack-col">
+            <section class="panel">
+                <div class="panel-head center">
+                    <h2>@L.T("Bookings", "Reservas")</h2>
+                    <button type="button" class="btn small" data-entry="scope=Rental&kind=Inflow">@Icons.Get("plus")@L.T("Booking", "Reserva")</button>
+                </div>
+                @foreach (var booking in paid)
+                {
+                    <div class="booking">
+                        <div>
+                            <div class="t">@L.Stretch(booking.CheckIn, booking.CheckOut) <span>· @L.Count(booking.Nights, "night", "nights", "noite", "noites")</span></div>
+                            <div class="s">@(string.IsNullOrEmpty(booking.Channel) ? booking.Name : booking.Channel)@(booking.NightlyRate is { } rate ? " · " + L.Money(rate) + " " + L.T("a night", "por noite") : string.Empty)</div>
+                        </div>
+                        <span class="row-amt in">+@L.Money(booking.Amount)</span>
+                    </div>
+                }
+                @if (paid.Count == 0)
+                {
+                    <div class="empty">@L.T("No bookings paid this month.", "Sem reservas pagas este mês.")</div>
+                }
+            </section>
+            @if (data.YearMonths.Count > 0)
+            {
+                <section class="panel">
+                    <div class="panel-head">
+                        <h2>@L.T($"{data.Year} so far", $"{data.Year} até agora")</h2>
+                        <span class="num @(data.YearMargin < 0 ? "neg" : "brass")" style="font-size:14.5px">@L.Signed(data.YearMargin)</span>
+                    </div>
+                    <div class="year-bars">
+                        @foreach (var line in data.YearMonths)
+                        {
+                            var day = Lang.MonthStart(line.Month);
+                            <a href="/rental?month=@line.Month" class="@(line.Month == data.Month ? "now" : null) @(line.Net < 0 ? "short" : null)" style="flex:1 1 0;min-width:0">
+                                <i style="height:@(Charts.BarHeight(line.Net, largestYear, 86))px"></i>
+                                <span>@L.MonthShort(day) <b>@(line.Net > 0 ? "+" : string.Empty)@L.Money(line.Net, cents: false)</b></span>
+                            </a>
+                        }
+                    </div>
+                </section>
+            }
+        </div>
+    </div>
+
+    <section class="panel rise rise-4">
+        <div class="panel-head">
+            <h2>@L.T($"{name}'s rental entries", $"Movimentos do alojamento em {name}")</h2>
+            <a href="/entries?month=@data.Month&scope=rental">@L.T("Open in Entries", "Abrir em Movimentos") →</a>
+        </div>
+        @foreach (var entry in data.Entries)
+        {
+            <partial name="_Row" model="entry" />
+        }
+    </section>
+}

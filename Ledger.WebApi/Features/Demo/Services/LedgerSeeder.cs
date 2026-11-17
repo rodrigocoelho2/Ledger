@@ -98,7 +98,7 @@ internal sealed class DemoSeeder(
         var projects = new Dictionary<string, Guid>(StringComparer.Ordinal);
         foreach (var project in demo.Projects)
         {
-            if (await projectRepository.SaveAsync(userId, null, project, null, null) is { } id)
+            if (await projectRepository.SaveAsync(userId, null, project, null, null, DemoData.AgreedPrice(project)) is { } id)
             {
                 projects[project] = id;
             }

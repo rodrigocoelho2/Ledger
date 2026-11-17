@@ -17,6 +17,11 @@ public static class Clock
     /// <summary>Gets today's date.</summary>
     public static DateOnly Today => DateOnly.FromDateTime(Now);
 
+    /// <summary>A moment as the wall clock of the app's time zone shows it.</summary>
+    /// <param name="moment">The moment.</param>
+    /// <returns>The local date and time.</returns>
+    public static DateTime Local(DateTimeOffset moment) => TimeZoneInfo.ConvertTimeFromUtc(moment.UtcDateTime, zone);
+
     /// <summary>
     /// Sets the time zone from its IANA or Windows id; an empty or unknown id keeps the machine's zone.
     /// </summary>

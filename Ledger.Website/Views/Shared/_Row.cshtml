@@ -1,0 +1,38 @@
+@model EntryDTO
+@{
+    // One line of the ledger: the day in the margin, what it was, where it belongs, and the amount.
+    var tags = ViewData["Tags"] is true;
+    var edit = L.T("Change", "Alterar") + " " + Model.Name;
+}
+<div class="row">
+    <div class="row-date"><b>@Model.Date.Day.ToString("00")</b>@L.MonthShort(Model.Date).ToUpperInvariant()</div>
+    <button type="button" class="row-main" data-entry="id=@Model.Id" aria-label="@edit">
+        <span class="row-name">@Model.Name</span>
+        <span class="row-sub">
+            @if (Model.Kind == EntryKind.Transfer)
+            {
+                <span>@(Model.AccountName ?? "—") → @(Model.ToAccountName ?? "—")</span>
+            }
+            else
+            {
+                var parts = new List<string> { L.Category(Model.Category) };
+                if (Model.AccountName is not null) { parts.Add(Model.AccountName); }
+                if (Model.Nights is > 0) { parts.Add(L.Count(Model.Nights.Value, "night", "nights", "noite", "noites")); }
+                if (!string.IsNullOrEmpty(Model.Channel)) { parts.Add(Model.Channel); }
+                if (Model.ProjectName is not null) { parts.Add(Model.ProjectName); }
+                <span class="dot" style="background:@Categories.Color(Model.Category)"></span>
+                <span>@string.Join(" · ", parts)</span>
+            }
+            @if (tags && Model.Scope == EntryScope.Rental)
+            {
+                <span class="tag rental">@L.T("Rental", "Alojamento")</span>
+            }
+            else if (tags && Model.Scope == EntryScope.Flips)
+            {
+                <span class="tag flips">@L.T("Buy & Sell", "Compra & Venda")</span>
+            }
+        </span>
+    </button>
+    <span class="row-amt @Lang.Tone(Model.Kind)">@L.Entry(Model.Kind, Model.Amount)</span>
+    <button type="button" class="row-more" data-entry="id=@Model.Id" aria-label="@edit" tabindex="-1">@Icons.Dots()</button>
+</div>

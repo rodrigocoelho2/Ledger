@@ -17,7 +17,8 @@ internal sealed record FileAccount(string Name, AccountKind? Kind, decimal Openi
 /// <param name="Name">Its name.</param>
 /// <param name="TargetSale">The price hoped for.</param>
 /// <param name="WorksBudget">What the works should cost.</param>
-internal sealed record FileProject(string Name, decimal? TargetSale, decimal? WorksBudget);
+/// <param name="AgreedPrice">The price agreed with the seller.</param>
+internal sealed record FileProject(string Name, decimal? TargetSale, decimal? WorksBudget, decimal? AgreedPrice = null);
 
 /// <summary>An entry as a file writes it: the account and the project by name.</summary>
 /// <param name="Day">The day.</param>
@@ -160,7 +161,7 @@ internal static class LedgerFile
             Version = 1,
             ExportedAt = exportedAt,
             Accounts = [.. ledger.Accounts.Select(static account => new BackupAccount { Name = account.Name, Kind = (account.Kind ?? AccountKind.Current).ToString(), OpeningBalance = account.OpeningBalance })],
-            Projects = [.. ledger.Projects.Select(static project => new BackupProject { Name = project.Name, TargetSale = project.TargetSale, WorksBudget = project.WorksBudget })],
+            Projects = [.. ledger.Projects.Select(static project => new BackupProject { Name = project.Name, TargetSale = project.TargetSale, WorksBudget = project.WorksBudget, AgreedPrice = project.AgreedPrice })],
             Caps = [.. ledger.Caps.OrderBy(static cap => cap.Key).Select(static cap => new BackupCap { Month = Months.Text(cap.Key), Amount = cap.Value })],
             Entries = [.. ledger.Entries.Select(static entry => new BackupEntry
             {
@@ -291,7 +292,7 @@ internal static class LedgerFile
             {
                 if (!string.IsNullOrWhiteSpace(project.Name))
                 {
-                    ledger.Projects.Add(new FileProject(project.Name.Trim(), project.TargetSale, project.WorksBudget));
+                    ledger.Projects.Add(new FileProject(project.Name.Trim(), project.TargetSale, project.WorksBudget, project.AgreedPrice));
                 }
             }
 
@@ -582,6 +583,8 @@ internal static class LedgerFile
         public decimal? TargetSale { get; set; }
 
         public decimal? WorksBudget { get; set; }
+
+        public decimal? AgreedPrice { get; set; }
     }
 
     private sealed class BackupCap

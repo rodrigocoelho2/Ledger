@@ -21,8 +21,9 @@ internal interface IProjectRepository
     /// <param name="name">The name.</param>
     /// <param name="targetSale">The price hoped for.</param>
     /// <param name="worksBudget">What the works should cost.</param>
+    /// <param name="agreedPrice">The price agreed with the seller (null: none).</param>
     /// <returns>The project's id, or null when the project to change isn't this user's.</returns>
-    Task<Guid?> SaveAsync(Guid userId, Guid? projectId, string name, decimal? targetSale, decimal? worksBudget);
+    Task<Guid?> SaveAsync(Guid userId, Guid? projectId, string name, decimal? targetSale, decimal? worksBudget, decimal? agreedPrice);
 
     /// <summary>Deletes a project; its entries stay, without a project.</summary>
     /// <param name="userId">The user.</param>
@@ -41,7 +42,7 @@ internal sealed class ProjectRepository(ISqlConnectionFactory connectionFactory)
     public Task<List<ProjectRow>> ListAsync(Guid userId) => QueryAsync<ProjectRow>("[dbo].[ProjectList]", new { UserUniqueID = userId });
 
     /// <inheritdoc />
-    public Task<Guid?> SaveAsync(Guid userId, Guid? projectId, string name, decimal? targetSale, decimal? worksBudget) =>
+    public Task<Guid?> SaveAsync(Guid userId, Guid? projectId, string name, decimal? targetSale, decimal? worksBudget, decimal? agreedPrice) =>
         ExecuteScalarAsync<Guid?>("[dbo].[ProjectSave]", new
         {
             UserUniqueID = userId,
@@ -49,6 +50,7 @@ internal sealed class ProjectRepository(ISqlConnectionFactory connectionFactory)
             Name = name,
             TargetSale = targetSale,
             WorksBudget = worksBudget,
+            AgreedPrice = agreedPrice,
         });
 
     /// <inheritdoc />
@@ -73,7 +75,7 @@ internal sealed class MemoryProjectRepository(MemoryStore store, TimeProvider ti
     }
 
     /// <inheritdoc />
-    public Task<Guid?> SaveAsync(Guid userId, Guid? projectId, string name, decimal? targetSale, decimal? worksBudget)
+    public Task<Guid?> SaveAsync(Guid userId, Guid? projectId, string name, decimal? targetSale, decimal? worksBudget, decimal? agreedPrice)
     {
         lock (store.Gate)
         {
@@ -91,6 +93,7 @@ internal sealed class MemoryProjectRepository(MemoryStore store, TimeProvider ti
                     Name = name,
                     TargetSale = targetSale,
                     WorksBudget = worksBudget,
+                    AgreedPrice = agreedPrice,
                     CreatedAt = timeProvider.GetUtcNow().UtcDateTime,
                 };
                 ledger.Projects.Add(row);
@@ -106,6 +109,7 @@ internal sealed class MemoryProjectRepository(MemoryStore store, TimeProvider ti
             existing.Name = name;
             existing.TargetSale = targetSale;
             existing.WorksBudget = worksBudget;
+            existing.AgreedPrice = agreedPrice;
             return Task.FromResult<Guid?>(existing.ProjectUniqueID);
         }
     }
@@ -134,6 +138,7 @@ internal sealed class MemoryProjectRepository(MemoryStore store, TimeProvider ti
         Name = project.Name,
         TargetSale = project.TargetSale,
         WorksBudget = project.WorksBudget,
+        AgreedPrice = project.AgreedPrice,
         CreatedAt = project.CreatedAt,
     };
 }

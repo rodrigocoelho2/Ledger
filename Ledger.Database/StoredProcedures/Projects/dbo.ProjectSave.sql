@@ -9,7 +9,8 @@ CREATE PROCEDURE [dbo].[ProjectSave]
     @ProjectUniqueID UNIQUEIDENTIFIER,
     @Name            NVARCHAR (80),
     @TargetSale      DECIMAL (14, 2),
-    @WorksBudget     DECIMAL (14, 2)
+    @WorksBudget     DECIMAL (14, 2),
+    @AgreedPrice     DECIMAL (14, 2)
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -31,8 +32,8 @@ BEGIN
         BEGIN
             SET @ProjectUniqueID = NEWID();
 
-            INSERT INTO [dbo].[Project] ([ProjectUniqueID], [UserID], [Name], [TargetSale], [WorksBudget])
-            VALUES (@ProjectUniqueID, @UserID, @Name, @TargetSale, @WorksBudget);
+            INSERT INTO [dbo].[Project] ([ProjectUniqueID], [UserID], [Name], [TargetSale], [WorksBudget], [AgreedPrice])
+            VALUES (@ProjectUniqueID, @UserID, @Name, @TargetSale, @WorksBudget, @AgreedPrice);
         END
 
         COMMIT TRANSACTION;
@@ -42,7 +43,8 @@ BEGIN
         UPDATE [dbo].[Project]
         SET [Name] = @Name,
             [TargetSale] = @TargetSale,
-            [WorksBudget] = @WorksBudget
+            [WorksBudget] = @WorksBudget,
+            [AgreedPrice] = @AgreedPrice
         WHERE [ProjectUniqueID] = @ProjectUniqueID
           AND [UserID] = @UserID;
 

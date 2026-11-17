@@ -12,7 +12,7 @@ SHARED=$SELF/shared-sql/.env
 APPS_PY=/volume3/docker/_scripts/apps/apps.py
 APPS_SH=/volume3/docker/_scripts/apps/apps.sh
 HOMEPAGE=/volume3/docker/homepage
-PORT=5098
+PORT=5100
 
 ok()   { echo "   OK  $*"; }
 fail() { echo "   !!! $*"; exit 1; }
@@ -56,10 +56,10 @@ SQL_APP_PASSWORD=$APP_PW
 LEDGER_API_KEY=$(gen)
 LEDGER_SETUP_KEY=$(gen)
 
-# IGDB (https://dev.twitch.tv/console/apps): cola aqui o Client ID e o Client Secret e corre
-#   sudo bash $APPS_SH atualizar ledger
-IGDB_CLIENT_ID=
-IGDB_CLIENT_SECRET=
+# Entrar com o Discord (opcional): a mesma aplicação Discord das outras apps; acrescenta o redirect
+#   https://ledger.prometheus-nas.com/signin-discord   e depois:  sudo bash $APPS_SH atualizar ledger
+# DISCORD_CLIENT_ID=
+# DISCORD_CLIENT_SECRET=
 EOF
   ok ".env criado"
 fi
@@ -148,8 +148,8 @@ p = sys.argv[1]; s = open(p).read()
 m = re.search(r'^( +)- Obol:\n((?:\1 +[^\n]*\n)+)', s, re.M)
 if not m: sys.exit(1)
 i, j = m.group(1), m.group(1) + "    "
-card = (f"\n{i}- Ledger:\n{j}icon: mdi-gamepad-variant-#4fc3f7\n{j}href: http://{{{{HOMEPAGE_VAR_NAS}}}}:5098\n"
-        f"{j}description: Biblioteca de jogos e amigos\n{j}container: ledger-website\n")
+card = (f"\n{i}- Ledger:\n{j}icon: mdi-book-open-variant-#7FC7AE\n{j}href: http://{{{{HOMEPAGE_VAR_NAS}}}}:5100\n"
+        f"{j}description: Finanças: entradas, saídas e o que sobra\n{j}container: ledger-website\n")
 end = m.end()
 s = s[:end] + card + s[end:]
 open(p, "w").write(s)

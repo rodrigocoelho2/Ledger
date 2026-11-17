@@ -1,0 +1,239 @@
+@model ProjectsPageModel
+@{
+    Layout = "_App";
+    var data = Model.Data;
+    ViewData["Title"] = L.T("Buy & Sell", "Compra & Venda");
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
+
+    string Phase(string key) => key switch
+    {
+        "deed" => L.T("Deed signed", "Escritura"),
+        "works" => L.T("Works", "Obras"),
+        "market" => L.T("On the market", "À venda"),
+        _ => L.T("Deposit paid", "Sinal pago"),
+    };
+    string Part(string key) => key == "profit" ? L.T("Profit", "Lucro") : L.Category(key);
+    string PartColor(string key) => key == "profit" ? "var(--in)" : Categories.Color(key);
+}
+
+<div class="heading rise">
+    <div>
+        <span class="eyebrow mauve">@L.T("Buy & Sell", "Compra & Venda")</span>
+        <h1 class="title smaller">@L.T("Projects", "Projetos")</h1>
+    </div>
+    <button type="button" class="btn mauve-line" data-open="project-dialog" data-set="{}">@Icons.Get("plus")@L.T("New project", "Novo projeto")</button>
+</div>
+
+<section class="kpis flips rise rise-2">
+    <div class="kpi">
+        <span class="eyebrow">@L.T("Realised profit", "Lucro realizado")</span>
+        <div class="v @(data.RealisedProfit < 0 ? "neg" : data.SoldCount > 0 ? "pos" : string.Empty)">@(data.SoldCount > 0 ? L.Signed(data.RealisedProfit) : "—")</div>
+        <div class="s">@L.Count(data.SoldCount, "project sold", "projects sold", "projeto vendido", "projetos vendidos")</div>
+    </div>
+    <div class="kpi">
+        <span class="eyebrow">@L.T("Return on sold projects", "Retorno dos vendidos")</span>
+        <div class="v">@(data.ReturnOnSold is { } back ? L.Percent(back, 1) : "—")</div>
+        <div class="s">@(data.SoldCount > 0 ? L.T("on", "sobre") + " " + L.Money(data.InvestedInSold, cents: false) + " " + L.T("invested", "investidos") : L.T("Nothing sold yet", "Ainda nada vendido"))</div>
+    </div>
+    <div class="kpi">
+        <span class="eyebrow">@L.T("Capital at work", "Capital em jogo")</span>
+        <div class="v mauve">@L.Money(data.CapitalAtWork)</div>
+        <div class="s">@L.Count(data.OpenCount, "project in progress", "projects in progress", "projeto em curso", "projetos em curso")</div>
+    </div>
+    <div class="kpi">
+        <span class="eyebrow">@L.T("Deposit to sale", "Do sinal à venda")</span>
+        <div class="v">@(data.AverageDays is { } averageDays ? averageDays.ToString(inv) : "—")<small> @L.T("days", "dias")</small></div>
+        <div class="s">@L.T("on average, for the sold ones", "em média, nos vendidos")</div>
+    </div>
+</section>
+
+@if (data.Projects.Count == 0)
+{
+    <section class="panel rise rise-3">
+        <div class="empty">
+            <b>@L.T("No projects yet", "Ainda sem projetos")</b>
+            @L.T("A project is a property you buy, fix up and sell. Give it a name, then file every cost and the sale under it.", "Um projeto é um imóvel que compras, remodelas e vendes. Dá-lhe um nome e regista nele cada custo e a venda.")
+            <div><button type="button" class="btn primary" data-open="project-dialog" data-set="{}">@Icons.Get("plus")@L.T("New project", "Novo projeto")</button></div>
+        </div>
+    </section>
+}
+
+@foreach (var project in data.Projects)
+{
+    var sold = project.State == ProjectState.Sold;
+    var whole = sold && project.Sold > project.Invested ? project.Sold : project.Invested;
+    var totalDays = project.Phases.Sum(static phase => phase.Days);
+    var set = System.Text.Json.JsonSerializer.Serialize(new { id = project.Id, name = project.Name, targetSale = L.Input(project.TargetSale), worksBudget = L.Input(project.WorksBudget), agreedPrice = L.Input(project.AgreedPrice) });
+    <section class="panel rise rise-3" id="p-@project.Id">
+        <div class="proj-head">
+            <div>
+                <div class="proj-name">
+                    <h2>@project.Name</h2>
+                    <span class="pill @(sold ? "sold" : "open")">@(sold ? L.T("Sold", "Vendido") : L.T("In progress", "Em curso"))</span>
+                </div>
+                <div class="proj-sub">
+                    @if (project.FirstDay is { } first)
+                    {
+                        <text>@L.T("Started", "Começou a") @L.FullDay(first)</text>
+                        @if (project.SaleDay is { } saleDay)
+                        {
+                            <text> · @L.T("sold", "vendido a") @L.FullDay(saleDay)</text>
+                        }
+                        @if (project.Days is { } projectDays)
+                        {
+                            <text> · @L.Count(projectDays, "day", "days", "dia", "dias")</text>
+                        }
+                    }
+                    else
+                    {
+                        <text>@L.T("Nothing filed under it yet", "Ainda sem movimentos")</text>
+                    }
+                </div>
+            </div>
+            <div class="proj-result">
+                @if (sold && project.Result is { } result)
+                {
+                    <div class="v @(result < 0 ? "neg" : "pos")">@L.Signed(result)</div>
+                    <div class="s">@(project.Return is { } projectReturn ? L.Percent(projectReturn, 1) + " " + L.T("return on", "de retorno sobre") + " " : string.Empty)@L.Money(project.Invested, cents: false) @L.T("invested", "investidos")</div>
+                }
+                else
+                {
+                    <div class="v mauve">@L.Money(project.Invested)</div>
+                    <div class="s">@L.T("invested so far", "investidos até agora")</div>
+                }
+            </div>
+        </div>
+
+        @if (project.Phases.Count > 0 && totalDays > 0)
+        {
+            <div class="scroll-x">
+                <div class="phases" style="@(project.Phases.Count < 3 ? "min-width:0" : null)">
+                    @foreach (var phase in project.Phases)
+                    {
+                        <div class="phase @phase.Key" style="flex:@phase.Days 1 0">
+                            <i></i>
+                            <b>@Phase(phase.Key)</b>
+                            <span>@L.Day(phase.Start) · @L.Count(phase.Days, "day", "days", "dia", "dias")</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (project.Split.Count > 0 && whole > 0)
+        {
+            <div class="proj-part">
+                <span class="eyebrow">@(sold ? L.T($"Where the {L.Money(project.Sold, cents: false)} went", $"Para onde foram os {L.Money(project.Sold, cents: false)}") : L.T($"Where the {L.Money(project.Invested, cents: false)} went so far", $"Para onde foram os {L.Money(project.Invested, cents: false)} até agora"))</span>
+                <div class="stackbar tall" style="margin-top:12px" role="img" aria-label="@L.T("The costs of the project and the profit", "Os custos do projeto e o lucro")">
+                    @foreach (var part in project.Split)
+                    {
+                        <span style="flex:@(part.Share.ToString("0.####", inv)) 1 0;background:@PartColor(part.Key)" title="@Part(part.Key) · @L.Money(part.Amount)"></span>
+                    }
+                </div>
+                <div class="legend">
+                    @foreach (var part in project.Split)
+                    {
+                        <div class="@(part.Key == "profit" ? "kept" : null)"><span class="dot" style="background:@PartColor(part.Key)"></span>@Part(part.Key) <span class="num">@L.Money(part.Amount, cents: false) · @L.Percent(part.Share, 1)</span></div>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (!sold)
+        {
+            <div class="proj-cols">
+                <form class="aim" data-ajax action="/projects/save" method="post">
+                    <input type="hidden" name="id" value="@project.Id" />
+                    <input type="hidden" name="name" value="@project.Name" />
+                    <label class="q" for="target-@project.Id">@L.T("What does it need to sell for?", "Por quanto tem de ser vendido?")</label>
+                    <p>@L.T("The price agreed with the seller, a budget for the works and a target sale, and Ledger tells you what would be left.", "O preço acordado com o vendedor, um orçamento para as obras e um preço de venda alvo, e o Ledger diz-te o que sobraria.")</p>
+                    <div class="aim-row">
+                        <input class="in-box mono" type="text" name="agreedPrice" inputmode="decimal" value="@L.Input(project.AgreedPrice)" placeholder="@L.T("Agreed price", "Preço acordado")" aria-label="@L.T("Price agreed with the seller", "Preço acordado com o vendedor")" />
+                        <input id="target-@project.Id" class="in-box mono" type="text" name="targetSale" inputmode="decimal" value="@L.Input(project.TargetSale)" placeholder="@L.T("Target sale", "Preço alvo")" aria-label="@L.T("Target sale price", "Preço alvo de venda")" />
+                        <input class="in-box mono" type="text" name="worksBudget" inputmode="decimal" value="@L.Input(project.WorksBudget)" placeholder="@L.T("Works budget", "Orçamento de obras")" aria-label="@L.T("Works budget", "Orçamento de obras")" />
+                        <button type="submit" class="btn mauve-line wide">@L.T("Work it out", "Calcular")</button>
+                    </div>
+                    <div class="form-msg" hidden role="alert"></div>
+                </form>
+                <div>
+                    @if (project.TargetResult is { } targetResult && project.ProjectedCost is { } projected)
+                    {
+                        <div class="kv" style="border-top:0"><span class="name">@L.T("Projected cost", "Custo previsto")</span><span class="value">@L.Money(projected)</span></div>
+                        @if (project.AgreedPrice is { } price && price > project.PurchasePrice)
+                        {
+                            <div class="kv"><span class="name">@L.T("Still to pay of the price", "Falta pagar do preço")</span><span class="value">@L.Money(price - project.PurchasePrice)</span></div>
+                        }
+                        <div class="kv"><span class="name">@L.T("Target sale", "Preço alvo")</span><span class="value">@L.Money(project.TargetSale ?? 0)</span></div>
+                        <div class="kv"><span class="name">@L.T("What would be left", "O que sobraria")</span><span class="value @(targetResult < 0 ? "neg" : "pos")">@L.Signed(targetResult)@(project.TargetReturn is { } targetReturn ? " · " + L.Percent(targetReturn, 1) : string.Empty)</span></div>
+                        @if (project.WorksBudget is { } budget)
+                        {
+                            <div class="kv"><span class="name">@L.T("Works so far", "Obras até agora")</span><span class="value">@L.Money(project.WorksSpent, cents: false) @L.T("of", "de") @L.Money(budget, cents: false)</span></div>
+                        }
+                    }
+                    else
+                    {
+                        <p class="note" style="margin-top:0">@L.T("Before the tax on the gain. The projected cost is what you've paid so far, plus what is left of the agreed price and of the works budget. Transfer tax and the deed count once they're paid.", "Antes do imposto sobre a mais-valia. O custo previsto é o que já pagaste, mais o que falta do preço acordado e do orçamento de obras. O IMT e a escritura contam quando forem pagos.")</p>
+                    }
+                </div>
+            </div>
+        }
+
+        <div class="proj-tools">
+            <button type="button" class="btn small" data-entry="scope=Flips&project=@project.Id">@Icons.Get("plus")@L.T("Add a cost", "Adicionar custo")</button>
+            @if (!sold)
+            {
+                <button type="button" class="btn small" data-entry="scope=Flips&kind=Inflow&project=@project.Id">@Icons.Get("check")@L.T("Record the sale", "Registar a venda")</button>
+            }
+            <button type="button" class="btn small quiet" data-open="project-dialog" data-set="@set">@Icons.Get("edit")@L.T("Rename", "Mudar nome")</button>
+        </div>
+
+        @if (project.Entries.Count > 0)
+        {
+            <details class="more">
+                <summary>@L.Count(project.EntryCount, "entry", "entries", "movimento", "movimentos") ▾</summary>
+                @foreach (var entry in project.Entries)
+                {
+                    <partial name="_Row" model="entry" />
+                }
+            </details>
+        }
+    </section>
+}
+
+@if (data.Loose.Count > 0)
+{
+    <section class="panel">
+        <div class="panel-head">
+            <h2>@L.T("Without a project", "Sem projeto")</h2>
+            <span class="eyebrow">@L.Count(data.Loose.Count, "entry", "entries", "movimento", "movimentos")</span>
+        </div>
+        <p class="note" style="margin:0 0 10px">@L.T("Buy & Sell entries that aren't filed under a project. Open one to pick its project.", "Movimentos de Compra & Venda que não estão em nenhum projeto. Abre um para escolher o projeto.")</p>
+        @foreach (var entry in data.Loose)
+        {
+            <partial name="_Row" model="entry" />
+        }
+    </section>
+}
+
+<dialog class="sheet" id="project-dialog">
+    <form class="sheet-body" data-ajax action="/projects/save" method="post">
+        <div class="sheet-top">
+            <h2 data-title-new="@L.T("New project", "Novo projeto")" data-title-edit="@L.T("Change project", "Alterar projeto")">@L.T("New project", "Novo projeto")</h2>
+            <button type="button" class="icon-btn bare" data-close aria-label="@L.T("Close", "Fechar")">@Icons.Get("x")</button>
+        </div>
+        <input type="hidden" name="id" />
+        <input type="hidden" name="targetSale" />
+        <input type="hidden" name="worksBudget" />
+        <input type="hidden" name="agreedPrice" />
+        <label class="field">
+            <span>@L.T("Name", "Nome")</span>
+            <input type="text" name="name" maxlength="80" required autocomplete="off" placeholder="T2 Bela Vista" />
+        </label>
+        <p class="note">@L.T("Usually the property: its type and the street or neighbourhood.", "Normalmente o imóvel: a tipologia e a rua ou o bairro.")</p>
+        <div class="form-msg" hidden role="alert"></div>
+        <div class="form-foot">
+            <button type="button" class="btn danger" data-edit-only hidden data-post="/projects/delete" data-id-from="id" data-confirm>@Icons.Get("trash")<span class="sr">@L.T("Delete project", "Apagar projeto")</span></button>
+            <button type="submit" class="btn primary">@L.T("Save", "Guardar")</button>
+        </div>
+    </form>
+</dialog>

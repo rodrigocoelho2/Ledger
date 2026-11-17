@@ -1,0 +1,33 @@
+@* The dialog that adds an account or changes one (the page script fills it in from the row that opened it). *@
+<dialog class="sheet" id="account-dialog">
+    <form class="sheet-body" data-ajax action="/accounts/save" method="post">
+        <div class="sheet-top">
+            <h2 data-title-new="@L.T("New account", "Nova conta")" data-title-edit="@L.T("Change account", "Alterar conta")">@L.T("New account", "Nova conta")</h2>
+            <button type="button" class="icon-btn bare" data-close aria-label="@L.T("Close", "Fechar")">@Icons.Get("x")</button>
+        </div>
+        <input type="hidden" name="id" />
+        <label class="field">
+            <span>@L.T("Name", "Nome")</span>
+            <input type="text" name="name" maxlength="60" required autocomplete="off" />
+        </label>
+        <label class="field">
+            <span>@L.T("Kind", "Tipo")</span>
+            <select name="kind">
+                @foreach (var kind in Enum.GetValues<AccountKind>())
+                {
+                    <option value="@kind">@L.Kind(kind)</option>
+                }
+            </select>
+        </label>
+        <label class="field">
+            <span>@L.T("Opening balance", "Saldo inicial")</span>
+            <input type="text" class="mono" name="openingBalance" inputmode="decimal" placeholder="@L.Input(0m)" autocomplete="off" />
+        </label>
+        <p class="note">@L.T("What was in the account before the first entry you write down. Every entry moves the balance from there.", "O que estava na conta antes do primeiro movimento que registas. Cada movimento mexe no saldo a partir daí.")</p>
+        <div class="form-msg" hidden role="alert"></div>
+        <div class="form-foot">
+            <button type="button" class="btn danger" data-edit-only hidden data-post="/accounts/delete" data-id-from="id" data-confirm>@Icons.Get("trash")<span class="sr">@L.T("Delete account", "Apagar conta")</span></button>
+            <button type="submit" class="btn primary">@L.T("Save", "Guardar")</button>
+        </div>
+    </form>
+</dialog>

@@ -17,6 +17,9 @@ public sealed class ProjectRow
     /// <summary>Gets or sets what the person plans to spend on the works.</summary>
     public decimal? WorksBudget { get; set; }
 
+    /// <summary>Gets or sets the price agreed with the seller.</summary>
+    public decimal? AgreedPrice { get; set; }
+
     /// <summary>Gets or sets when it was created (UTC).</summary>
     public DateTime CreatedAt { get; set; }
 }

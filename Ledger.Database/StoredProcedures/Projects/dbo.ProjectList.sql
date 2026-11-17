@@ -13,6 +13,7 @@ BEGIN
            p.[Name],
            p.[TargetSale],
            p.[WorksBudget],
+           p.[AgreedPrice],
            p.[CreatedAt]
     FROM [dbo].[Project] p
     INNER JOIN [dbo].[User] u ON u.[UserID] = p.[UserID]

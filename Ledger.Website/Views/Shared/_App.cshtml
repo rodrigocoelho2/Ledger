@@ -1,64 +1,70 @@
 @model AppPageModel
 @{
+    // The shell of every signed-in page: the top bar (a dock on the phone), the entry dialog and the toast.
     Layout = "_Layout";
-    ViewData["App"] = true;
-    var current = Model.Section;
-    string? Current(AppSection s) => s == current ? "page" : null;
-    var tabs = new[]
+    string? Current(AppSection section) => Model.Section == section ? "page" : null;
+
+    // "New entry" opens on the part of life being looked at.
+    var entryQuery = Model.Section switch
     {
-        (AppSection.Overview, "/", "overview", "Overview"),
-        (AppSection.Holdings, "/holdings", "holdings", "Holdings"),
-        (AppSection.Insights, "/insights", "insights", "Insights"),
-        (AppSection.Income, "/income", "income", "Income"),
-        (AppSection.Activity, "/activity", "activity", "Activity"),
-        (AppSection.Sync, "/sync", "sync", "Sync"),
+        AppSection.Rental => "scope=Rental&kind=Inflow",
+        AppSection.Flips => "scope=Flips",
+        _ => string.Empty,
     };
 }
-<div class="app sec-@current.ToString().ToLowerInvariant()">
-    <header class="topbar">
-        <div class="topbar-in">
-            <a class="brand" href="/">@Icons.Logo(34)Ledger</a>
-            <nav class="nav" aria-label="Ledger">
-                @foreach (var (s, href, _, name) in tabs)
-                {
-                    <a href="@href" aria-current="@Current(s)">@name</a>
-                }
-            </nav>
-            <div class="top-acts">
-                <a class="chip-sync" href="/sync"><span class="dot @Model.SyncDot"></span>@(Model.Connection is { Connected: true } ? "Trading 212 · " : string.Empty)@Model.SyncLabel</a>
-                <a class="avatar" href="/settings" aria-label="Settings (@Model.UserName)" aria-current="@Current(AppSection.Settings)">@Model.Initials</a>
-            </div>
+<div class="wrap">
+    <header class="top">
+        <a class="brand" href="/" aria-label="Ledger">@Icons.Logo()Ledger</a>
+        <nav class="nav" aria-label="@L.T("Sections", "Secções")">
+            <a class="core" href="/" aria-current="@Current(AppSection.Overview)">@L.T("Overview", "Resumo")</a>
+            <a class="core" href="/entries" aria-current="@Current(AppSection.Entries)">@L.T("Entries", "Movimentos")</a>
+            <a class="core" href="/accounts" aria-current="@Current(AppSection.Accounts)">@L.T("Accounts", "Contas")</a>
+            @if (Model.RentalEnabled)
+            {
+                <a href="/rental" aria-current="@Current(AppSection.Rental)"><span class="dot" style="background:var(--brass)"></span>@L.T("Rental", "Alojamento")</a>
+            }
+            @if (Model.FlipsEnabled)
+            {
+                <a href="/projects" aria-current="@Current(AppSection.Flips)"><span class="dot" style="background:var(--mauve)"></span>@L.T("Buy & Sell", "Compra & Venda")</a>
+            }
+        </nav>
+        <div class="top-actions">
+            <button type="button" class="btn primary" data-entry="@entryQuery">@Icons.Get("plus")@L.T("New entry", "Novo movimento")</button>
+            <a class="icon-btn" href="/settings" aria-label="@L.T("Settings", "Definições")" aria-current="@Current(AppSection.Settings)">@Icons.Get("settings")</a>
+            <a class="avatar" href="/settings#account" aria-label="@L.T("Your account", "A tua conta") (@Model.UserName)">@Model.Initial</a>
         </div>
     </header>
 
-    <main class="page">
-        @if (Model.Unavailable is { } problem)
+    <main>
+        @if (Model.Unavailable is not null)
         {
-            <section class="card empty">
-                <span class="ico-chip">@Icons.Get("server")</span>
-                <h2>Ledger's engine isn't answering</h2>
-                <p>@problem</p>
-                <a class="btn ghost" href="">Try again</a>
+            <section class="panel" style="margin-top:44px">
+                <div class="empty">
+                    <b>@L.T("The books are closed for a moment", "Os livros estão fechados por um momento")</b>
+                    @Model.Unavailable
+                    <div><a class="btn" href="">@L.T("Try again", "Tentar outra vez")</a></div>
+                </div>
             </section>
-            IgnoreBody();
         }
         else
         {
             @RenderBody()
         }
     </main>
-
-    <nav class="dock" aria-label="Ledger">
-        @foreach (var (s, href, icon, name) in tabs.Where(static tab => tab.Item1 != AppSection.Activity))
-        {
-            <a href="@href" aria-current="@Current(s)" aria-label="@name">@Icons.Get(icon)<span class="lbl">@name</span></a>
-        }
-    </nav>
 </div>
-@section Head {
-    @await RenderSectionAsync("Head", required: false)
-}
-@section Scripts {
-    <script src="~/js/app.js" asp-append-version="true"></script>
-    @await RenderSectionAsync("Scripts", required: false)
-}
+
+<nav class="dock" aria-label="@L.T("Sections", "Secções")">
+    <a href="/" aria-current="@Current(AppSection.Overview)">@Icons.Get("overview")@L.T("Overview", "Resumo")</a>
+    <a href="/entries" aria-current="@Current(AppSection.Entries)">@Icons.Get("entries")@L.T("Entries", "Movimentos")</a>
+    <button type="button" class="dock-add" data-entry="@entryQuery" aria-label="@L.T("New entry", "Novo movimento")">@Icons.Get("plus")</button>
+    <a href="/accounts" aria-current="@Current(AppSection.Accounts)">@Icons.Get("accounts")@L.T("Accounts", "Contas")</a>
+    <a href="/settings" aria-current="@Current(AppSection.Settings)">@Icons.Get("settings")@L.T("More", "Mais")</a>
+</nav>
+
+<dialog class="sheet" id="entry-dialog" aria-label="@L.T("Entry", "Movimento")"></dialog>
+<div class="toast@(Model.Problem is null ? string.Empty : " err")" id="toast" role="status" data-show="@(Model.Problem ?? Model.Notice)"></div>
+<div id="words" hidden
+     data-sure="@L.T("Tap again to confirm", "Toca outra vez para confirmar")"
+     data-failed="@L.T("That didn't work. Check the connection and try again.", "Não resultou. Verifica a ligação e tenta outra vez.")"
+     data-saved="@L.T("Saved", "Guardado")"></div>
+@await RenderSectionAsync("Scripts", required: false)
