@@ -12,3 +12,6 @@ __pycache__/
 appsettings.Development.json
 !appsettings.Development.json.example
 ci-output/
+
+# deploy/prometheus-setup.sh marker (on the NAS)
+.deploy-shared-sql

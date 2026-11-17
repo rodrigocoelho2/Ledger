@@ -155,13 +155,18 @@ Ledger joins the other apps on Prometheus: its own folder in `/volume3/docker/se
 and a **Portainer stack** managed by `apps.sh`. Run these over SSH.
 
 **The short way**: clone it and let the script do the rest — the `.env` (secrets generated, sa taken from
-`shared-sql`), the build, `apps.py`, the stack, the checks and the Homepage card. It's safe to run again.
+`shared-sql`), the `ledger` password in `shared-sql`'s `.env` and in its variables in Portainer, the build, `apps.py`,
+the stack, the checks and the Homepage card. It's safe to run again.
 
 ```bash
 cd /volume3/docker/self-hosted
-git clone https://github.com/rodrigocoelho2/Ledger.git Ledger
+sudo docker run --rm -v "$PWD:/git" -w /git alpine/git clone https://github.com/rodrigocoelho2/Ledger.git Ledger
 sudo bash Ledger/deploy/prometheus-setup.sh
 ```
+
+**Where the variables live**: in the `.env` next to `docker-compose.yml` (and in `shared-sql/.env`). `apps.sh` sends
+them to the stack's variables in Portainer on every `migrar`/`atualizar`, so you see them there — but a change made only
+in Portainer is overwritten by the next update. Change the `.env`, then `apps.sh atualizar ledger`.
 
 **Step by step**, if you'd rather:
 
