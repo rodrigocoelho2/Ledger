@@ -1,7 +1,8 @@
 #!/bin/bash
 # Ledger on Prometheus, from a fresh clone to a running Portainer stack:
 #   .env (secrets generated, sa taken from shared-sql) → shared-sql's .env and its Portainer variables →
-#   build on the NAS → apps.py → Portainer stack → checks (database, ledger login, website) → Homepage card.
+#   Obol and the bank (keys into .env) → build on the NAS → apps.py → Portainer stack → checks (database, ledger login,
+#   website, Obol) → Homepage card.
 # Safe to run again: what's already done is kept (the .env, shared-sql, the apps.py line, the Homepage card).
 #
 # Where the variables live: in the .env next to each app's docker-compose.yml (and shared-sql's). apps.sh sends them
@@ -69,6 +70,39 @@ EOF
 fi
 chmod 600 .env
 PORT=$(get LEDGER_PORT .env); PORT=${PORT:-5100}
+
+step "Obol (valor dos investimentos)"
+set_env() { [ -n "$(tail -c1 .env)" ] && echo >> .env; if grep -q "^$1=" .env; then sed -i "s|^$1=.*|$1=$2|" .env; else printf '%s=%s\n' "$1" "$2" >> .env; fi; }
+OBOL_ENV=$SELF/Obol/.env
+if [ -n "$(get OBOL_API_KEY .env)" ]; then
+  ok "OBOL_API_KEY já está no .env"
+elif [ -n "$(get OBOL_API_KEY "$OBOL_ENV")" ]; then
+  set_env OBOL_API_KEY "$(get OBOL_API_KEY "$OBOL_ENV")"
+  ok "OBOL_API_KEY copiada de $OBOL_ENV"
+else
+  echo "   (não encontrei o OBOL_API_KEY em $OBOL_ENV: a ligação ao Obol fica desligada)"
+fi
+if docker inspect -f '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}' obol-webapi 2>/dev/null | grep -qw sql-net; then
+  ok "o obol-webapi está na rede sql-net: o Ledger chega-lhe em http://obol-webapi:8080"
+else
+  echo "   (o obol-webapi não está na rede sql-net: o Ledger não lhe chega. Põe-no na sql-net no compose do Obol)"
+fi
+
+step "banco (Enable Banking)"
+# The key Enable Banking gives is named after the application: <application-id>.pem. Leave it next to
+# docker-compose.yml and this puts both into .env (the .pem is in .gitignore; delete it after if you like).
+PEM=$(ls "$APP"/*.pem 2>/dev/null | head -1)
+if [ -n "$(get ENABLEBANKING_KEY .env)" ] && [ -n "$(get ENABLEBANKING_APP_ID .env)" ]; then
+  ok "ENABLEBANKING_APP_ID e ENABLEBANKING_KEY já estão no .env"
+elif [ -n "$PEM" ]; then
+  ID=$(basename "$PEM" .pem)
+  [ -n "$(get ENABLEBANKING_APP_ID .env)" ] || set_env ENABLEBANKING_APP_ID "$ID"
+  set_env ENABLEBANKING_KEY "$(base64 -w0 "$PEM")"
+  chmod 600 "$PEM"
+  ok "chave $(basename "$PEM") posta no .env (app $(get ENABLEBANKING_APP_ID .env))"
+else
+  echo "   (sem chave da Enable Banking: põe o <application-id>.pem em $APP e corre outra vez — o README explica)"
+fi
 
 step "shared-sql"
 # The ledger password goes into shared-sql's .env (above) and into its variables in Portainer, like the other apps'.
@@ -159,6 +193,17 @@ for i in $(seq 1 40); do
 done
 [ "$code" = 200 ] || { docker logs ledger-webapi 2>&1 | tail -20; docker logs ledger-website 2>&1 | tail -20; fail "o site não responde (HTTP $code)"; }
 ok "site a responder em http://<ip-do-nas>:$PORT"
+
+if [ -n "$(get OBOL_API_KEY .env)" ]; then
+  KEY=$(get OBOL_API_KEY .env)
+  if docker exec ledger-webapi sh -c "command -v wget >/dev/null" 2>/dev/null; then
+    docker exec ledger-webapi wget -q -O /dev/null --header "x-api-key: $KEY" http://obol-webapi:8080/user/list 2>/dev/null \
+      && ok "o ledger-webapi chega ao Obol" || echo "   (o ledger-webapi não chegou ao Obol em http://obol-webapi:8080)"
+  else
+    docker run --rm --network sql-net curlimages/curl -s -o /dev/null -w '%{http_code}' -H "x-api-key: $KEY" http://obol-webapi:8080/user/list 2>/dev/null | grep -q 200 \
+      && ok "o Obol responde na sql-net" || echo "   (o Obol não respondeu em http://obol-webapi:8080 na sql-net)"
+  fi
+fi
 
 step "Homepage"
 add_card() {

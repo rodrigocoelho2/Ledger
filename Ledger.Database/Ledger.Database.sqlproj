@@ -18,6 +18,7 @@
     <Folder Include="Tables\" />
     <Folder Include="StoredProcedures\" />
     <Folder Include="StoredProcedures\Accounts\" />
+    <Folder Include="StoredProcedures\Banks\" />
     <Folder Include="StoredProcedures\Caps\" />
     <Folder Include="StoredProcedures\Entries\" />
     <Folder Include="StoredProcedures\Projects\" />
@@ -28,6 +29,9 @@
 
   <ItemGroup>
     <Build Include="Tables\dbo.Account.sql" />
+    <Build Include="Tables\dbo.AccountValue.sql" />
+    <Build Include="Tables\dbo.BankIgnore.sql" />
+    <Build Include="Tables\dbo.BankLink.sql" />
     <Build Include="Tables\dbo.Entry.sql" />
     <Build Include="Tables\dbo.MonthCap.sql" />
     <Build Include="Tables\dbo.Project.sql" />
@@ -37,13 +41,24 @@
     <Build Include="StoredProcedures\Accounts\dbo.AccountList.sql" />
     <Build Include="StoredProcedures\Accounts\dbo.AccountReorder.sql" />
     <Build Include="StoredProcedures\Accounts\dbo.AccountSave.sql" />
+    <Build Include="StoredProcedures\Accounts\dbo.AccountValueList.sql" />
+    <Build Include="StoredProcedures\Accounts\dbo.AccountValueSave.sql" />
+    <Build Include="StoredProcedures\Accounts\dbo.AccountValuedAll.sql" />
+    <Build Include="StoredProcedures\Banks\dbo.BankLinkAll.sql" />
+    <Build Include="StoredProcedures\Banks\dbo.BankLinkAssign.sql" />
+    <Build Include="StoredProcedures\Banks\dbo.BankLinkDelete.sql" />
+    <Build Include="StoredProcedures\Banks\dbo.BankLinkList.sql" />
+    <Build Include="StoredProcedures\Banks\dbo.BankLinkSave.sql" />
+    <Build Include="StoredProcedures\Banks\dbo.BankLinkSynced.sql" />
     <Build Include="StoredProcedures\Caps\dbo.CapList.sql" />
     <Build Include="StoredProcedures\Caps\dbo.CapSave.sql" />
+    <Build Include="StoredProcedures\Entries\dbo.EntryAttachExternal.sql" />
     <Build Include="StoredProcedures\Entries\dbo.EntryDelete.sql" />
     <Build Include="StoredProcedures\Entries\dbo.EntryGet.sql" />
     <Build Include="StoredProcedures\Entries\dbo.EntryImport.sql" />
     <Build Include="StoredProcedures\Entries\dbo.EntryList.sql" />
     <Build Include="StoredProcedures\Entries\dbo.EntryPlanDelete.sql" />
+    <Build Include="StoredProcedures\Entries\dbo.EntryReviewed.sql" />
     <Build Include="StoredProcedures\Entries\dbo.EntrySave.sql" />
     <Build Include="StoredProcedures\Entries\dbo.EntrySuggest.sql" />
     <Build Include="StoredProcedures\Entries\dbo.LedgerReset.sql" />

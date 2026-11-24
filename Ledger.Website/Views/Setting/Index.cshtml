@@ -69,6 +69,160 @@
         </div>
     </section>
 
+    @if (Model.Bank is { } bank)
+    {
+        var firstOfMonth = new DateOnly(Clock.Today.Year, Clock.Today.Month, 1).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        var linkedAccounts = bank.Links.Where(static link => link.AccountId is not null).Select(static link => link.AccountId).ToHashSet();
+        <section class="panel rise rise-3" id="bank" style="margin-top:28px">
+            <div class="panel-head">
+                <h2>@L.T("Bank", "Banco")</h2>
+                <span class="eyebrow">@L.T("Open banking · read only", "Open banking · só leitura")</span>
+            </div>
+            @if (!bank.Enabled)
+            {
+                <div class="set-row">
+                    <div class="what">
+                        <b>@L.T("Bring your bank's movements in", "Trazer os movimentos do banco")</b>
+                        <span>@L.T("Ledger can read your account at Crédito Agrícola (and most Portuguese banks) through Enable Banking, with your authorisation at the bank, read only. It isn't set up on this Ledger yet: add ENABLEBANKING_APP_ID and ENABLEBANKING_KEY to the .env and update the app (the README says how).", "O Ledger consegue ler a tua conta do Crédito Agrícola (e da maioria dos bancos portugueses) através da Enable Banking, com a tua autorização no banco, só para leitura. Ainda não está configurado neste Ledger: junta ENABLEBANKING_APP_ID e ENABLEBANKING_KEY ao .env e atualiza a aplicação (o README explica como).")</span>
+                    </div>
+                </div>
+            }
+            else
+            {
+                @foreach (var link in bank.Links)
+                {
+                    var label = link.BankName + (link.AccountLabel is null ? string.Empty : " · " + link.AccountLabel) + (link.IbanTail is null ? string.Empty : " ··" + link.IbanTail);
+                    <div class="bank-link" data-link="@link.Id">
+                        <div class="bank-top">
+                            <span class="bank-name"><span class="bank-mark" aria-hidden="true">@Icons.Get("bank")</span>@label</span>
+                            @if (link.Expired)
+                            {
+                                <span class="pill warn">@L.T("Authorisation ended", "Autorização terminada")</span>
+                            }
+                            else if (link.AccountId is null)
+                            {
+                                <span class="pill">@L.T("Pick an account", "Escolhe a conta")</span>
+                            }
+                            else if (link.LastError is not null)
+                            {
+                                <span class="pill warn">@L.T("Last sync failed", "A última sincronização falhou")</span>
+                            }
+                            else
+                            {
+                                <span class="pill ok">@L.T("Connected", "Ligada")</span>
+                            }
+                        </div>
+                        @if (link.AccountId is null)
+                        {
+                            <form class="bank-assign" data-ajax data-result action="/bank/assign" method="post">
+                                <input type="hidden" name="id" value="@link.Id" />
+                                <div class="field-row">
+                                    <label class="field">
+                                        <span>@L.T("Its movements go into", "Os movimentos vão para")</span>
+                                        <select name="account">
+                                            @foreach (var account in Model.Accounts.Where(account => !linkedAccounts.Contains(account.Id) && account.ValueSource is null))
+                                            {
+                                                <option value="@account.Id">@account.Name</option>
+                                            }
+                                            <option value="new">@L.T("A new account", "Uma conta nova") (@(link.AccountLabel ?? link.BankName))</option>
+                                        </select>
+                                    </label>
+                                    <label class="field">
+                                        <span>@L.T("Bring from", "Trazer desde")</span>
+                                        <input type="date" name="from" value="@firstOfMonth" max="@Clock.Today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)" />
+                                    </label>
+                                </div>
+                                <p class="note">@L.T("Movements you already wrote down by hand are recognised (same amount, a few days apart) and not added twice. The rest come in marked \"to review\". The opening balance is set so the balance matches the bank's.", "Os movimentos que já registaste à mão são reconhecidos (mesmo valor, poucos dias de diferença) e não entram duas vezes. Os restantes entram marcados \"por rever\". O saldo inicial é acertado para o saldo bater com o do banco.")</p>
+                                <div class="form-msg" hidden role="alert"></div>
+                                <div class="bank-actions">
+                                    <button type="submit" class="btn small primary">@L.T("Connect and bring", "Ligar e trazer")</button>
+                                    <button type="button" class="btn small danger" data-post="/bank/delete" data-id="@link.Id" data-confirm>@L.T("Forget", "Esquecer")</button>
+                                </div>
+                            </form>
+                        }
+                        else
+                        {
+                            <p class="bank-line">
+                                @L.T("Goes into", "Entra em") <b>@link.AccountName</b>
+                                · @(link.LastSyncAt is { } synced ? L.T("synced", "sincronizada") + " " + L.Ago(synced) : L.T("not synced yet", "por sincronizar"))
+                                @if (link.ValidUntil is { } until && !link.Expired)
+                                {
+                                    <span>· @L.T("authorised until", "autorizada até") @L.FullDay(DateOnly.FromDateTime(Clock.Local(until)))</span>
+                                }
+                            </p>
+                            @if (link.Expired)
+                            {
+                                <div class="form-msg" role="status">@L.T("The bank's authorisation ended (they last 90 to 180 days). Connect the bank again below to renew it; nothing is lost.", "A autorização do banco terminou (dura entre 90 e 180 dias). Volta a ligar o banco aqui em baixo para a renovar; não se perde nada.")</div>
+                            }
+                            else if (link.LastError is not null)
+                            {
+                                <div class="form-msg" role="status">@link.LastError</div>
+                            }
+                            @if (link.Difference is { } gap && gap != 0 && link.BankBalance is { } atBank)
+                            {
+                                <div class="bank-gap">
+                                    <span>@(gap > 0
+                                        ? L.T($"Ledger shows {L.Money(gap)} more than the bank ({L.Money(atBank)}).", $"O Ledger mostra mais {L.Money(gap)} do que o banco ({L.Money(atBank)}).")
+                                        : L.T($"Ledger shows {L.Money(-gap)} less than the bank ({L.Money(atBank)}).", $"O Ledger mostra menos {L.Money(-gap)} do que o banco ({L.Money(atBank)})."))</span>
+                                    <button type="button" class="btn small" data-post="/bank/align" data-id="@link.Id">@L.T("Match the bank", "Acertar com o banco")</button>
+                                </div>
+                            }
+                            <div class="bank-actions">
+                                <button type="button" class="btn small" data-post="/bank/sync" data-id="@link.Id" disabled="@link.Expired">@Icons.Get("refresh")@L.T("Sync now", "Sincronizar agora")</button>
+                                <button type="button" class="btn small danger" data-post="/bank/delete" data-id="@link.Id" data-confirm>@L.T("Disconnect", "Desligar")</button>
+                            </div>
+                        }
+                    </div>
+                }
+
+                @if (Model.BankPending)
+                {
+                    <form class="set-row" data-ajax action="/bank/paste" method="post" autocomplete="off">
+                        <div class="what">
+                            <b>@L.T("Back from the bank?", "Voltaste do banco?")</b>
+                            <span>@L.T("If the bank left you on a page that isn't Ledger, copy that page's whole address and paste it here.", "Se o banco te deixou numa página que não é o Ledger, copia o endereço completo dessa página e cola-o aqui.")</span>
+                            <label class="field" style="margin-top:6px"><span>@L.T("Address", "Endereço")</span><input type="url" name="address" required placeholder="https://…?code=…&state=…" /></label>
+                            <div class="form-msg" hidden role="alert"></div>
+                        </div>
+                        <div class="act">
+                            <button type="submit" class="btn small primary">@L.T("Finish", "Concluir")</button>
+                            <button type="button" class="btn small" data-post="/bank/cancel">@L.T("Cancel", "Cancelar")</button>
+                        </div>
+                    </form>
+                }
+
+                <form class="set-row" data-bank-start action="/bank/start" method="post">
+                    <div class="what">
+                        <b>@(bank.Links.Count == 0 ? L.T("Connect your bank", "Ligar o teu banco") : L.T("Connect or renew a bank", "Ligar ou renovar um banco"))</b>
+                        <span>@L.T("You sign in at the bank itself and pick the accounts Ledger may read. Movements come in every few hours on their own.", "Entras no próprio banco e escolhes as contas que o Ledger pode ler. Os movimentos chegam sozinhos de poucas em poucas horas.")</span>
+                        <label class="field" style="margin-top:6px">
+                            <span>@L.T("Bank", "Banco")</span>
+                            @if (Model.Banks.Count > 0)
+                            {
+                                <select name="bank">
+                                    @foreach (var choice in Model.Banks)
+                                    {
+                                        <option value="@choice.Name" selected="@(choice.Name.StartsWith("Crédito Agrícola", StringComparison.OrdinalIgnoreCase) || choice.Name.StartsWith("Credito Agricola", StringComparison.OrdinalIgnoreCase))">@choice.Name</option>
+                                    }
+                                </select>
+                            }
+                            else
+                            {
+                                <input type="text" name="bank" value="Crédito Agrícola" required />
+                            }
+                        </label>
+                        @if (Model.BanksProblem is not null)
+                        {
+                            <div class="form-msg" role="status">@Model.BanksProblem</div>
+                        }
+                        <div class="form-msg" hidden role="alert"></div>
+                    </div>
+                    <div class="act"><button type="submit" class="btn small primary">@Icons.Get("bank")@L.T("Go to the bank", "Ir ao banco")</button></div>
+                </form>
+            }
+        </section>
+    }
+
     <section class="panel rise rise-3" id="look" style="margin-top:28px">
         <div class="panel-head"><h2>@L.T("Look and language", "Aspeto e idioma")</h2></div>
         <div class="set-row">

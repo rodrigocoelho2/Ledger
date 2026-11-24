@@ -58,6 +58,12 @@ public sealed class EntryDTO
 
     /// <summary>Gets or sets how many instalments the plan has.</summary>
     public int? PlanParts { get; set; }
+
+    /// <summary>Gets or sets a value indicating whether it came from the bank.</summary>
+    public bool FromBank { get; set; }
+
+    /// <summary>Gets or sets a value indicating whether it came from the bank and nobody has looked at it yet.</summary>
+    public bool Review { get; set; }
 }
 
 /// <summary>Adds an entry (no <see cref="Id"/>) or changes one.</summary>
@@ -138,6 +144,19 @@ public sealed class EntryMonthDTO
 
     /// <summary>Gets or sets a value indicating whether the month has transfers.</summary>
     public bool HasTransfers { get; set; }
+
+    /// <summary>Gets or sets how many entries of the month came from the bank and wait to be looked at.</summary>
+    public int ReviewCount { get; set; }
+}
+
+/// <summary>Marks entries brought from the bank as looked at.</summary>
+public sealed class EntryReviewedRequest
+{
+    /// <summary>Gets or sets the user.</summary>
+    public string? UserId { get; set; }
+
+    /// <summary>Gets or sets the entries (empty: every one of the person).</summary>
+    public List<string>? Ids { get; set; }
 }
 
 /// <summary>What quick add understood from a line such as "9.80 lunch".</summary>

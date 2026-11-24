@@ -53,6 +53,8 @@ internal sealed partial class UserService(
     {
         UserCount = await _userRepository.CountAsync(),
         DemoMode = _options.DemoMode,
+        BankEnabled = _options.BankEnabled,
+        ObolEnabled = _options.ObolEnabled,
         DemoUserName = _options.DemoMode ? DemoUserName : null,
         DemoPassword = _options.DemoMode ? _options.DemoPassword : null,
     });

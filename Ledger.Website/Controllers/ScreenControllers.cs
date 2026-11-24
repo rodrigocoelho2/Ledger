@@ -35,7 +35,10 @@ public sealed class OverviewController(LedgerClient apiClient, Lang lang, IOptio
         }
 
         return await ScreenAsync("Index", Shell(new OverviewPageModel(), AppSection.Overview), async page =>
-            page.Data = await Api.OverviewGetAsync(UserId, month));
+        {
+            page.Data = await Api.OverviewGetAsync(UserId, month);
+            page.ObolEnabled = (await StatusAsync()).ObolEnabled;
+        });
     }
 
     /// <summary>What Ledger is, also for someone signed in.</summary>
@@ -359,17 +362,23 @@ public sealed class AccountsController(LedgerClient apiClient, Lang lang) : Webs
     /// <returns>The page.</returns>
     [HttpGet("/accounts")]
     public Task<IActionResult> Index() =>
-        ScreenAsync("Index", Shell(new AccountsPageModel(), AppSection.Accounts), async page => page.Accounts = await Api.AccountListAsync(UserId));
+        ScreenAsync("Index", Shell(new AccountsPageModel(), AppSection.Accounts), async page =>
+        {
+            page.Accounts = await Api.AccountListAsync(UserId);
+            page.ObolEnabled = (await StatusAsync()).ObolEnabled;
+        });
 
     /// <summary>Adds an account, or changes one.</summary>
     /// <param name="id">The account to change (empty: a new one).</param>
     /// <param name="name">The name.</param>
     /// <param name="kind">The kind.</param>
     /// <param name="openingBalance">What was in it before the first entry, as typed.</param>
+    /// <param name="valueSource">Where its value comes from ("Obol"; empty: its entries).</param>
+    /// <param name="valueRef">The user name in Obol (empty: the same as here).</param>
     /// <returns>Fine, or the messages to show.</returns>
     [HttpPost("/accounts/save")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Save([FromForm] string? id, [FromForm] string? name, [FromForm] string? kind, [FromForm] string? openingBalance)
+    public async Task<IActionResult> Save([FromForm] string? id, [FromForm] string? name, [FromForm] string? kind, [FromForm] string? openingBalance, [FromForm] string? valueSource, [FromForm] string? valueRef)
     {
         var opening = 0m;
         var text = (openingBalance ?? string.Empty).Trim();
@@ -393,8 +402,18 @@ public sealed class AccountsController(LedgerClient apiClient, Lang lang) : Webs
             Name = name,
             Kind = Enum.TryParse<AccountKind>(kind, ignoreCase: true, out var wanted) ? wanted : null,
             OpeningBalance = opening,
+            ValueSource = Enum.TryParse<ValueSource>(valueSource, ignoreCase: true, out var source) ? source : null,
+            ValueRef = valueRef,
         }));
     }
+
+    /// <summary>Asks Obol for an account's value now.</summary>
+    /// <param name="id">The account.</param>
+    /// <returns>Fine, or the messages to show.</returns>
+    [HttpPost("/accounts/refresh")]
+    [ValidateAntiForgeryToken]
+    public Task<JsonResult> Refresh([FromForm] string? id) =>
+        AnswerAsync(() => Api.AccountRefreshAsync(UserId, id ?? string.Empty), L.T("Value brought from Obol.", "Valor trazido do Obol."));
 
     /// <summary>Deletes an account; its entries stay in the ledger.</summary>
     /// <param name="id">The account.</param>

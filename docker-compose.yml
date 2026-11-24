@@ -36,7 +36,8 @@ services:
         max-file: "3"
 
   # The engine: users, accounts, entries, the overview, the rental and the projects, the files. Not published on any
-  # port: only the website reaches it, over the stack's own network. It never reaches out to the internet.
+  # port: only the website reaches it, over the stack's own network. It reaches out only when set up to: to Enable
+  # Banking (bank accounts, read only) and to Obol's WebApi over sql-net (the value of the investments).
   webapi:
     build:
       context: .
@@ -56,6 +57,13 @@ services:
       Ledger__TimeZone: ${TIME_ZONE:-Europe/Lisbon}
       # true = the sample ledger in memory (user "demo", password "ledger-demo"); no database is touched.
       Ledger__DemoMode: ${LEDGER_DEMO_MODE:-false}
+      # Bank accounts through Enable Banking (optional): the application id and its private key (the .pem in base64).
+      Ledger__EnableBankingAppId: ${ENABLEBANKING_APP_ID:-}
+      Ledger__EnableBankingKey: ${ENABLEBANKING_KEY:-}
+      Ledger__BankSyncHours: ${BANK_SYNC_HOURS:-8}
+      # The investments' value from Obol (optional): Obol's WebApi and its key (OBOL_API_KEY in Obol's .env).
+      Ledger__ObolUrl: ${OBOL_URL:-http://obol-webapi:8080}
+      Ledger__ObolApiKey: ${OBOL_API_KEY:-}
       DOTNET_gcServer: "0"
       TZ: ${TIME_ZONE:-Europe/Lisbon}
     cpus: ${LEDGER_CPUS:-1}

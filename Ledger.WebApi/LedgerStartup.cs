@@ -5,9 +5,13 @@ using Ledger.WebApi.Extensions.Globalization;
 using Ledger.WebApi.Extensions.Mvc;
 using Ledger.WebApi.Extensions.Time;
 using Ledger.WebApi.Features;
+using Ledger.WebApi.Features.Accounts.Http;
 using Ledger.WebApi.Features.Accounts.Repositories;
 using Ledger.WebApi.Features.Accounts.Services;
 using Ledger.WebApi.Features.Backup.Services;
+using Ledger.WebApi.Features.Banks.Http;
+using Ledger.WebApi.Features.Banks.Repositories;
+using Ledger.WebApi.Features.Banks.Services;
 using Ledger.WebApi.Features.Demo.Services;
 using Ledger.WebApi.Features.Entries.Repositories;
 using Ledger.WebApi.Features.Entries.Services;
@@ -76,6 +80,7 @@ internal static class LedgerStartup
             services.AddSingleton<IProjectRepository, MemoryProjectRepository>();
             services.AddSingleton<IEntryRepository, MemoryEntryRepository>();
             services.AddSingleton<ICapRepository, MemoryCapRepository>();
+            services.AddSingleton<IBankRepository, MemoryBankRepository>();
         }
         else
         {
@@ -86,6 +91,7 @@ internal static class LedgerStartup
             services.AddSingleton<IProjectRepository, ProjectRepository>();
             services.AddSingleton<IEntryRepository, EntryRepository>();
             services.AddSingleton<ICapRepository, CapRepository>();
+            services.AddSingleton<IBankRepository, BankRepository>();
         }
 
         // What a new user starts with: four empty accounts, or the sample ledger in demo mode.
@@ -99,6 +105,12 @@ internal static class LedgerStartup
             services.AddSingleton<ILedgerSeeder, StarterSeeder>();
         }
 
+        // The outside world: Enable Banking (bank accounts) and Obol (investments). Both stay idle until configured.
+        services.AddHttpClient(nameof(EnableBankingClient), static client => client.Timeout = TimeSpan.FromSeconds(60));
+        services.AddHttpClient(nameof(ObolClient), static client => client.Timeout = TimeSpan.FromSeconds(20));
+        services.AddSingleton<IEnableBankingClient, EnableBankingClient>();
+        services.AddSingleton<IObolClient, ObolClient>();
+
         // Services
         services.AddSingleton<IUserService, UserService>();
         services.AddSingleton<ISettingService, SettingService>();
@@ -108,6 +120,9 @@ internal static class LedgerStartup
         services.AddSingleton<IRentalService, RentalService>();
         services.AddSingleton<IProjectService, ProjectService>();
         services.AddSingleton<IBackupService, BackupService>();
+        services.AddSingleton<IValuationService, ValuationService>();
+        services.AddSingleton<IBankService, BankService>();
+        services.AddHostedService<SyncWorker>();
 
         return services;
     }

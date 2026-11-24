@@ -65,6 +65,10 @@
     {
         <nav class="chips" aria-label="@L.T("Categories", "Categorias")" style="@(Model.HasModules ? "margin-top:12px" : null)">
             <a href="@Link(data.Month, scope, null)" aria-current="@(Model.Category is null ? "true" : null)">@L.T("All", "Todos")</a>
+            @if (data.ReviewCount > 0 || Model.Category == "review")
+            {
+                <a class="chip-review" href="@Link(data.Month, scope, "review")" aria-current="@(Model.Category == "review" ? "true" : null)">@L.T("To review", "Por rever")<span class="num">@data.ReviewCount</span></a>
+            }
             @foreach (var key in data.Categories)
             {
                 <a href="@Link(data.Month, scope, key)" aria-current="@(Model.Category == key ? "true" : null)"><span class="dot" style="background:@Categories.Color(key)"></span>@L.Category(key)</a>
@@ -88,6 +92,13 @@
     }
     else
     {
+        @if (Model.Category == "review")
+        {
+            <div class="review-bar">
+                <span>@L.T("These came from the bank. Tap one to fix its name or category; saving it marks it as seen.", "Estes vieram do banco. Toca num para acertar o nome ou a categoria; ao guardar fica visto.")</span>
+                <button type="button" class="btn small" data-post="/entries/reviewed" data-id="@string.Join(",", data.Entries.Select(static entry => entry.Id))" data-then="@Link(data.Month, scope, null)">@L.T("All look right", "Está tudo certo")</button>
+            </div>
+        }
         <div style="margin-top:10px">
             @foreach (var entry in data.Entries)
             {

@@ -210,6 +210,23 @@ public sealed class Lang
     /// <returns>"kind-current", "kind-savings"…</returns>
     public static string Tick(AccountKind kind) => "kind-" + kind.ToString().ToLowerInvariant();
 
+    /// <summary>How long ago something happened: "just now", "12 min ago", "3 h ago", "yesterday", "4 days ago".</summary>
+    /// <param name="when">When it happened.</param>
+    /// <returns>The text.</returns>
+    public string Ago(DateTimeOffset when)
+    {
+        var gone = DateTimeOffset.UtcNow - when;
+        var minutes = (int)Math.Max(0, gone.TotalMinutes);
+        return minutes switch
+        {
+            < 2 => T("just now", "agora mesmo"),
+            < 60 => T($"{minutes} min ago", $"há {minutes} min"),
+            < 60 * 24 => T($"{minutes / 60} h ago", $"há {minutes / 60} h"),
+            < 60 * 48 => T("yesterday", "ontem"),
+            _ => T($"{minutes / (60 * 24)} days ago", $"há {minutes / (60 * 24)} dias"),
+        };
+    }
+
     /// <summary>A count with its noun: "1 entry", "29 entries".</summary>
     /// <param name="count">The count.</param>
     /// <param name="englishOne">The English singular.</param>

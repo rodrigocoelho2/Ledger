@@ -79,4 +79,20 @@ internal sealed class AccountController(
 
         return (await _accountService.DeleteAsync(userId, identifier)).ToActionResult();
     }
+
+    /// <summary>Asks an account valued elsewhere (Obol) for its value now.</summary>
+    /// <param name="userId">The user.</param>
+    /// <param name="identifier">The account.</param>
+    /// <returns>The account.</returns>
+    [HttpPost("refresh")]
+    [ProducesResponseType<AccountDTO>((int)HttpStatusCode.OK)]
+    [ProducesResponseType((int)HttpStatusCode.NotFound)]
+    [SwaggerOperation(Summary = "AccountRefresh", OperationId = "AccountRefresh")]
+    public async Task<ActionResult<AccountDTO>> AccountRefreshAsync(string? userId, string? identifier)
+    {
+        if (_logger.IsEnabled(LogLevel.Information))
+            _logger.LogInformation("AccountRefresh [UserId={UserId}, Identifier={Identifier}]", userId, identifier);
+
+        return (await _accountService.RefreshAsync(userId, identifier)).ToActionResult();
+    }
 }

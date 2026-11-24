@@ -85,4 +85,25 @@ public enum TranslationKeys
 
     /// <summary>Discord is the only way in, so it can't be unlinked before a password is set.</summary>
     DiscordNeedsPassword,
+
+    /// <summary>Bank connections aren't set up on this instance.</summary>
+    BankOff,
+
+    /// <summary>The bank answered with an error.</summary>
+    BankFailed,
+
+    /// <summary>A bank account that isn't one of the person's connections.</summary>
+    BankLinkUnknown,
+
+    /// <summary>The bank authorisation came back for someone else, or too late.</summary>
+    BankStateInvalid,
+
+    /// <summary>A Ledger account another bank account already goes into.</summary>
+    BankAccountTaken,
+
+    /// <summary>Obol isn't set up on this instance.</summary>
+    ObolOff,
+
+    /// <summary>Obol answered with an error, or doesn't know that user.</summary>
+    ObolFailed,
 }

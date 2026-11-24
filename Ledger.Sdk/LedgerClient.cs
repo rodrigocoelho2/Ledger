@@ -100,6 +100,59 @@ public sealed class LedgerClient(HttpClient httpClient)
     public Task AccountDeleteAsync(string userId, string identifier) =>
         DeleteAsync($"account?userId={Uri.EscapeDataString(userId)}&identifier={Uri.EscapeDataString(identifier)}");
 
+    /// <summary>Asks an account valued elsewhere (Obol) for its value now.</summary>
+    /// <param name="userId">The user.</param>
+    /// <param name="identifier">The account.</param>
+    /// <returns>The account.</returns>
+    public Task<AccountDTO> AccountRefreshAsync(string userId, string identifier) =>
+        PostAsync<AccountDTO>($"account/refresh?userId={Uri.EscapeDataString(userId)}&identifier={Uri.EscapeDataString(identifier)}", null);
+
+    // ----- Banks -----
+
+    /// <summary>The person's bank connections.</summary>
+    /// <param name="userId">The user.</param>
+    /// <returns>The status.</returns>
+    public Task<BankStatusDTO> BankStatusAsync(string userId) => GetAsync<BankStatusDTO>($"bank/status?userId={Uri.EscapeDataString(userId)}");
+
+    /// <summary>The banks of a country.</summary>
+    /// <param name="country">The country (null: PT).</param>
+    /// <returns>The banks.</returns>
+    public Task<List<BankChoiceDTO>> BankListAsync(string? country = null) => GetAsync<List<BankChoiceDTO>>($"bank/list?{Optional("country", country).TrimStart('&')}");
+
+    /// <summary>Starts connecting a bank.</summary>
+    /// <param name="item">The bank.</param>
+    /// <returns>Where to send the person.</returns>
+    public Task<BankStartDTO> BankStartAsync(BankStartRequest item) => PostAsync<BankStartDTO>("bank/start", item);
+
+    /// <summary>Finishes connecting a bank.</summary>
+    /// <param name="item">The code and state.</param>
+    /// <returns>The status.</returns>
+    public Task<BankStatusDTO> BankCompleteAsync(BankCompleteRequest item) => PostAsync<BankStatusDTO>("bank/complete", item);
+
+    /// <summary>Says which Ledger account a bank account goes into, and brings its transactions.</summary>
+    /// <param name="item">The link and the account.</param>
+    /// <returns>What the first sync did.</returns>
+    public Task<BankSyncDTO> BankAssignAsync(BankAssignRequest item) => PostAsync<BankSyncDTO>("bank/assign", item);
+
+    /// <summary>Brings a connected account's latest transactions now.</summary>
+    /// <param name="userId">The user.</param>
+    /// <param name="identifier">The link.</param>
+    /// <returns>What the sync did.</returns>
+    public Task<BankSyncDTO> BankSyncAsync(string userId, string identifier) =>
+        PostAsync<BankSyncDTO>($"bank/sync?userId={Uri.EscapeDataString(userId)}&identifier={Uri.EscapeDataString(identifier)}", null);
+
+    /// <summary>Makes Ledger's balance agree with the bank's.</summary>
+    /// <param name="item">The link.</param>
+    /// <returns>The link.</returns>
+    public Task<BankLinkDTO> BankAlignAsync(BankAlignRequest item) => PostAsync<BankLinkDTO>("bank/align", item);
+
+    /// <summary>Disconnects a bank account (its entries stay).</summary>
+    /// <param name="userId">The user.</param>
+    /// <param name="identifier">The link.</param>
+    /// <returns>A task that completes when it is disconnected.</returns>
+    public Task BankDeleteAsync(string userId, string identifier) =>
+        DeleteAsync($"bank?userId={Uri.EscapeDataString(userId)}&identifier={Uri.EscapeDataString(identifier)}");
+
     // ----- Entries -----
 
     /// <summary>The entries of a month.</summary>
@@ -143,6 +196,11 @@ public sealed class LedgerClient(HttpClient httpClient)
     /// <returns>How many instalments were deleted.</returns>
     public Task<int> EntryPlanDeleteAsync(string userId, string planId) =>
         DeleteAsync<int>($"entry/plan?userId={Uri.EscapeDataString(userId)}&planId={Uri.EscapeDataString(planId)}");
+
+    /// <summary>Marks entries brought from the bank as looked at.</summary>
+    /// <param name="item">The entries (none: all of them).</param>
+    /// <returns>How many changed.</returns>
+    public Task<int> EntryReviewedAsync(EntryReviewedRequest item) => PostAsync<int>("entry/reviewed", item);
 
     // ----- Overview -----
 

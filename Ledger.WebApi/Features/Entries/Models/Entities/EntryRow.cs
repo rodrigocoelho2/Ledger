@@ -76,6 +76,14 @@ public sealed class EntryRow
     [JsonPropertyName("pn")]
     public short? PlanParts { get; set; }
 
+    /// <summary>Gets or sets the bank's id for the transaction it came from (null: written by hand).</summary>
+    [JsonPropertyName("x")]
+    public string? ExternalID { get; set; }
+
+    /// <summary>Gets or sets whether it came from the bank and hasn't been looked at yet.</summary>
+    [JsonPropertyName("rv")]
+    public bool? Review { get; set; }
+
     /// <summary>Gets the day as a date.</summary>
     [JsonIgnore]
     public DateOnly Day => DateOnly.FromDateTime(EntryDate);

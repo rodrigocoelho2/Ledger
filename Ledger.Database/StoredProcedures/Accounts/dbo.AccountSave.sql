@@ -1,14 +1,17 @@
 /*
     AccountSave
-    Adds an account (NULL @AccountUniqueID; it goes to the end of the list) or changes one. Returns the account's
-    identifier, or NULL when the account to change isn't this person's.
+    Adds an account (NULL @AccountUniqueID; it goes to the end of the list) or changes one, with where its value comes
+    from (@ValueSource NULL: its entries). Returns the account's identifier, or NULL when the account to change isn't
+    this person's.
 */
 CREATE PROCEDURE [dbo].[AccountSave]
     @UserUniqueID    UNIQUEIDENTIFIER,
     @AccountUniqueID UNIQUEIDENTIFIER,
     @Name            NVARCHAR (60),
     @Kind            TINYINT,
-    @OpeningBalance  DECIMAL (14, 2)
+    @OpeningBalance  DECIMAL (14, 2),
+    @ValueSource     TINYINT = NULL,
+    @ValueRef        NVARCHAR (64) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -25,8 +28,8 @@ BEGIN
     BEGIN
         SET @AccountUniqueID = NEWID();
 
-        INSERT INTO [dbo].[Account] ([AccountUniqueID], [UserID], [Name], [Kind], [OpeningBalance], [SortOrder])
-        SELECT @AccountUniqueID, @UserID, @Name, @Kind, @OpeningBalance, ISNULL(MAX(a.[SortOrder]), 0) + 1
+        INSERT INTO [dbo].[Account] ([AccountUniqueID], [UserID], [Name], [Kind], [OpeningBalance], [SortOrder], [ValueSource], [ValueRef])
+        SELECT @AccountUniqueID, @UserID, @Name, @Kind, @OpeningBalance, ISNULL(MAX(a.[SortOrder]), 0) + 1, @ValueSource, @ValueRef
         FROM [dbo].[Account] a
         WHERE a.[UserID] = @UserID;
     END
@@ -35,7 +38,9 @@ BEGIN
         UPDATE [dbo].[Account]
         SET [Name] = @Name,
             [Kind] = @Kind,
-            [OpeningBalance] = @OpeningBalance
+            [OpeningBalance] = @OpeningBalance,
+            [ValueSource] = @ValueSource,
+            [ValueRef] = @ValueRef
         WHERE [AccountUniqueID] = @AccountUniqueID
           AND [UserID] = @UserID;
 

@@ -56,6 +56,12 @@ public sealed class UserStatusDTO
 
     /// <summary>Gets or sets the demo account's password (demo mode only; it's sample data on purpose).</summary>
     public string? DemoPassword { get; set; }
+
+    /// <summary>Gets or sets a value indicating whether bank accounts can be connected (Enable Banking is set up).</summary>
+    public bool BankEnabled { get; set; }
+
+    /// <summary>Gets or sets a value indicating whether accounts can take their value from Obol.</summary>
+    public bool ObolEnabled { get; set; }
 }
 
 /// <summary>Creates an account.</summary>

@@ -5,7 +5,7 @@
     var edit = L.T("Change", "Alterar") + " " + Model.Name;
     var ahead = Model.Date > Clock.Today;
 }
-<div class="row@(ahead ? " ahead" : string.Empty)">
+<div class="row@(ahead ? " ahead" : string.Empty)@(Model.Review ? " review" : string.Empty)">
     <div class="row-date"><b>@Model.Date.Day.ToString("00")</b>@L.MonthShort(Model.Date).ToUpperInvariant()</div>
     <button type="button" class="row-main" data-entry="id=@Model.Id" aria-label="@edit">
         <span class="row-name">@Model.Name</span>
@@ -27,6 +27,10 @@
             @if (Model is { PlanPart: { } planPart, PlanParts: { } planParts })
             {
                 <span class="tag plan">@planPart/@planParts</span>
+            }
+            @if (Model.Review)
+            {
+                <span class="tag review" title="@L.T("Brought from the bank: check the name and the category", "Trazido do banco: confirma o nome e a categoria")">@L.T("to review", "por rever")</span>
             }
             @if (ahead)
             {

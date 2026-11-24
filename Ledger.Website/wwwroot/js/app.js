@@ -113,7 +113,37 @@
         var box = form.querySelector('.form-msg');
         if (box) box.hidden = true;
         disarm(form);
+        if (form._valueSource) form._valueSource();
     }
+
+    /* ---------- The account dialog: a balance from the entries, or the value in Obol ---------- */
+    document.querySelectorAll('[data-value-source]').forEach(function (select) {
+        var form = select.closest('form');
+        form._valueSource = function () {
+            var obol = select.value === 'Obol';
+            var editing = !!(form.elements.id && form.elements.id.value);
+            form.querySelectorAll('[data-obol-only]').forEach(function (element) {
+                element.hidden = !obol || (element.hasAttribute('data-edit-only') && !editing);
+            });
+            form.querySelectorAll('[data-from-entries]').forEach(function (element) { element.hidden = obol; });
+            var opening = form.elements.openingBalance;
+            if (opening && opening.closest('.field')) opening.closest('.field').hidden = obol;
+        };
+        select.addEventListener('change', form._valueSource);
+    });
+
+    /* ---------- Settings: off to the bank ---------- */
+    document.querySelectorAll('form[data-bank-start]').forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+            var button = form.querySelector('[type=submit]');
+            busy(button, true);
+            post(form.getAttribute('action'), new FormData(form)).then(function (result) {
+                if (!result || !result.isValid || !result.data || !result.data.url) { busy(button, false); showProblem(form, messages(result)); return; }
+                location.href = result.data.url;
+            }).catch(function () { busy(button, false); showProblem(form, [say('failed', "That didn't work.")]); });
+        });
+    });
 
     document.addEventListener('click', function (event) {
         var opener = event.target.closest('[data-open]');

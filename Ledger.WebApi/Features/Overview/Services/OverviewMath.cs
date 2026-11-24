@@ -1,5 +1,6 @@
 using Ledger.Library.Categories;
 using Ledger.Library.Enums;
+using Ledger.WebApi.Features.Accounts.Models.Entities;
 using Ledger.WebApi.Features.Entries.Models.Entities;
 using Ledger.WebApi.Features.Entries.Services;
 using Ledger.WebApi.Features.Overview.Models.DTOs;
@@ -161,4 +162,20 @@ internal static class OverviewMath
                 Future = month > current,
             };
         }).ToList();
+
+    /// <summary>
+    /// What an account valued elsewhere gained or lost in a month: its last value of the month less its last value
+    /// before it. Null when one of the two isn't known.
+    /// </summary>
+    /// <param name="values">The account's values (any order).</param>
+    /// <param name="start">The first day of the month.</param>
+    /// <param name="end">The last day of the month.</param>
+    /// <returns>The change.</returns>
+    public static decimal? ValueChange(IEnumerable<AccountValueRow> values, DateOnly start, DateOnly end)
+    {
+        var list = values.Select(static value => (Day: DateOnly.FromDateTime(value.ValueDate), value.Value)).OrderBy(static value => value.Day).ToList();
+        var before = list.Where(value => value.Day < start).Select(static value => (decimal?)value.Value).LastOrDefault();
+        var last = list.Where(value => value.Day <= end).Select(static value => (decimal?)value.Value).LastOrDefault();
+        return before is { } from && last is { } to ? to - from : null;
+    }
 }

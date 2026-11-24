@@ -55,6 +55,11 @@ internal interface IEntryService
     /// <param name="text">The line ("9.80 lunch").</param>
     /// <returns>What was understood.</returns>
     Task<ServiceApiResponse<QuickAddDTO>> QuickAsync(string? userId, string? text);
+
+    /// <summary>Marks entries brought from the bank as looked at.</summary>
+    /// <param name="item">The entries (none: all of them).</param>
+    /// <returns>How many changed.</returns>
+    Task<ServiceApiResponse<int>> ReviewedAsync(EntryReviewedRequest item);
 }
 
 /// <summary>
@@ -83,6 +88,9 @@ internal sealed class EntryService(
 
     /// <summary>The filter value that lists only the transfers.</summary>
     public const string TransfersFilter = "transfers";
+
+    /// <summary>The filter value that lists only what came from the bank and waits to be looked at.</summary>
+    public const string ReviewFilter = "review";
 
     private const string FieldName = "Name";
     private const string FieldKind = "Kind";
@@ -121,7 +129,9 @@ internal sealed class EntryService(
             ? rows
             : wanted.Equals(TransfersFilter, StringComparison.OrdinalIgnoreCase)
                 ? rows.Where(static row => row.Kind == (byte)EntryKind.Transfer).ToList()
-                : rows.Where(row => string.Equals(row.Category, wanted, StringComparison.OrdinalIgnoreCase)).ToList();
+                : wanted.Equals(ReviewFilter, StringComparison.OrdinalIgnoreCase)
+                    ? rows.Where(static row => row.Review == true).ToList()
+                    : rows.Where(row => string.Equals(row.Category, wanted, StringComparison.OrdinalIgnoreCase)).ToList();
 
         return ServiceApiResponse<EntryMonthDTO>.Success(new EntryMonthDTO
         {
@@ -137,6 +147,7 @@ internal sealed class EntryService(
                 .Select(static group => group.Key)
                 .ToList(),
             HasTransfers = rows.Any(static row => row.Kind == (byte)EntryKind.Transfer),
+            ReviewCount = rows.Count(static row => row.Review == true),
         });
     }
 
@@ -421,6 +432,27 @@ internal sealed class EntryService(
         }
 
         return ServiceApiResponse<int>.Success(deleted);
+    }
+
+    /// <inheritdoc />
+    public async Task<ServiceApiResponse<int>> ReviewedAsync(EntryReviewedRequest item)
+    {
+        if (!TryUser(item.UserId, out var id))
+        {
+            return await MissingAsync<int>(item.UserId);
+        }
+
+        var ids = (item.Ids ?? [])
+            .Select(static text => Guid.TryParse(text, out var entry) ? entry : Guid.Empty)
+            .Where(static entry => entry != Guid.Empty)
+            .Distinct()
+            .ToList();
+        if (item.Ids is { Count: > 0 } && ids.Count == 0)
+        {
+            return ServiceApiResponse<int>.Success(0);
+        }
+
+        return ServiceApiResponse<int>.Success(await _entryRepository.ReviewedAsync(id, ids));
     }
 
     /// <inheritdoc />

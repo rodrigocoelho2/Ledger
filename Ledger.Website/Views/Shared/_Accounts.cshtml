@@ -6,13 +6,20 @@
 <div class="acct-list" data-reorder="/accounts/order">
     @foreach (var account in Model)
     {
-        var set = System.Text.Json.JsonSerializer.Serialize(new { id = account.Id, name = account.Name, kind = account.Kind.ToString(), openingBalance = L.Input(account.OpeningBalance) });
+        var set = System.Text.Json.JsonSerializer.Serialize(new { id = account.Id, name = account.Name, kind = account.Kind.ToString(), openingBalance = L.Input(account.OpeningBalance), valueSource = account.ValueSource?.ToString() ?? string.Empty, valueRef = account.ValueRef ?? string.Empty });
+        // Where the balance comes from, when it isn't only the entries: Obol's value, or a bank that keeps it in step.
+        var source = account.ValueSource == ValueSource.Obol
+            ? (account.ValueError is not null ? L.T("Obol · not answering", "Obol · sem resposta") : account.ValueDate is { } valued ? "Obol · " + (valued == Clock.Today ? L.T("today", "hoje") : L.Day(valued)) : L.T("Obol · no value yet", "Obol · ainda sem valor"))
+            : account.BankName is { } bank
+                ? bank + " · " + (account.BankSyncedAt is { } synced ? L.Ago(synced) : L.T("not synced yet", "por sincronizar"))
+                : null;
         <div class="acct" data-id="@account.Id">
             <button type="button" class="acct-grip" aria-label="@L.T("Move", "Mover") @account.Name" title="@L.T("Drag to reorder", "Arrasta para reordenar")">@Icons.Grip()</button>
             <span class="acct-tick @Lang.Tick(account.Kind)"></span>
             <span class="acct-main">
                 <span class="acct-name">@account.Name</span>
-                <span class="acct-kind">@L.Kind(account.Kind)</span>
+                <span class="acct-kind">@L.Kind(account.Kind)@if (source is not null)
+                    {<span class="acct-source @(account.ValueError is not null || account.BankDifference is not null and not 0m ? "warn" : null)" title="@(account.BankDifference is { } gap and not 0m ? L.T("Ledger and the bank differ by", "O Ledger e o banco diferem em") + " " + L.Money(gap) : null)"> · @source</span>}</span>
             </span>
             <span class="acct-money">
                 <span class="b">@L.Money(account.Balance)</span>

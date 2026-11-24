@@ -62,6 +62,16 @@ public enum AccountKind
 }
 
 /// <summary>
+/// Where the value of an account comes from, when it isn't the sum of its entries. The numbers are stored in the
+/// database: never renumber them.
+/// </summary>
+public enum ValueSource
+{
+    /// <summary>The portfolio's value in Obol (the investment tracker on the same server).</summary>
+    Obol = 1,
+}
+
+/// <summary>
 /// When the instalments after the first one are paid. The numbers travel in requests: never renumber them.
 /// </summary>
 public enum InstalmentRule

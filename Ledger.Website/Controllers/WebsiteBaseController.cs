@@ -33,6 +33,24 @@ public abstract class WebsiteBaseController(LedgerClient apiClient, Lang lang) :
         "Can't reach Ledger's engine (WebApi) right now. Check that the ledger-webapi container is running.",
         "Não consigo chegar ao motor do Ledger (WebApi). Confirma que o contentor ledger-webapi está a correr.");
 
+    private static (DateTime At, Sdk.Models.UserStatusDTO Status)? status;
+
+    /// <summary>
+    /// What this Ledger can do (demo mode, bank, Obol): asked once a minute at most, it changes only on a restart.
+    /// </summary>
+    /// <returns>The status.</returns>
+    protected async Task<Sdk.Models.UserStatusDTO> StatusAsync()
+    {
+        if (status is { } kept && DateTime.UtcNow - kept.At < TimeSpan.FromMinutes(1))
+        {
+            return kept.Status;
+        }
+
+        var fresh = await Api.UserStatusAsync();
+        status = (DateTime.UtcNow, fresh);
+        return fresh;
+    }
+
     /// <summary>
     /// Fills in the shell of a page: who's signed in, the tab, the modules and the message a form left.
     /// </summary>

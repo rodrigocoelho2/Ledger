@@ -70,6 +70,13 @@ internal sealed class GlobalizationHelper(IHttpContextAccessor httpContextAccess
         [nameof(TranslationKeys.DiscordTaken)] = ("That Discord account is already linked to another user.", "Essa conta Discord já está ligada a outro utilizador."),
         [nameof(TranslationKeys.DiscordInvalid)] = ("isn't a Discord account.", "não é uma conta Discord."),
         [nameof(TranslationKeys.DiscordNeedsPassword)] = ("Discord is the only way into this user. Set a password before unlinking it.", "O Discord é a única forma de entrar neste utilizador. Define uma palavra-passe antes de o desligar."),
+        [nameof(TranslationKeys.BankOff)] = ("Bank connections aren't set up here (ENABLEBANKING_APP_ID and ENABLEBANKING_KEY in .env).", "A ligação ao banco não está configurada (ENABLEBANKING_APP_ID e ENABLEBANKING_KEY no .env)."),
+        [nameof(TranslationKeys.BankFailed)] = ("The bank didn't answer as expected: {0}", "O banco não respondeu como esperado: {0}"),
+        [nameof(TranslationKeys.BankLinkUnknown)] = ("That bank account isn't connected.", "Essa conta bancária não está ligada."),
+        [nameof(TranslationKeys.BankStateInvalid)] = ("That authorisation isn't yours or has expired. Start again.", "Essa autorização não é tua ou expirou. Começa de novo."),
+        [nameof(TranslationKeys.BankAccountTaken)] = ("Another bank account already goes into that account.", "Já há outra conta bancária a entrar nessa conta."),
+        [nameof(TranslationKeys.ObolOff)] = ("Obol isn't set up here (OBOL_URL and OBOL_API_KEY in .env).", "O Obol não está configurado (OBOL_URL e OBOL_API_KEY no .env)."),
+        [nameof(TranslationKeys.ObolFailed)] = ("Obol didn't answer as expected: {0}", "O Obol não respondeu como esperado: {0}"),
 
         ["UserName"] = ("User name", "O nome de utilizador"),
         ["Password"] = ("Password", "A palavra-passe"),

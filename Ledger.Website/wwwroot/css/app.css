@@ -595,3 +595,26 @@ dialog.sheet::backdrop { background: var(--shade); backdrop-filter: blur(4px); }
 .plan-dots i { width: 14px; height: 4px; border-radius: 99px; background: var(--raised-2); }
 .plan-dots i.paid { background: var(--blue); }
 .hero-net p.one-off { margin-top: 6px; font-size: 12.5px; color: var(--faint); }
+
+/* ---------- Bank connections and values from Obol ---------- */
+.bank-link { padding: 16px 0; border-top: 1px solid var(--line); }
+.bank-link:first-of-type { border-top: 0; }
+.bank-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.bank-name { display: inline-flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 500; min-width: 0; }
+.bank-mark { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 10px; background: var(--raised); color: var(--brass); flex: none; }
+.bank-mark .ic { width: 16px; height: 16px; }
+.bank-line { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); }
+.bank-line b { color: var(--text); font-weight: 500; }
+.bank-assign { margin-top: 10px; }
+.bank-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.bank-gap { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; margin-top: 12px; padding: 10px 14px; border-radius: var(--r-sm); background: color-mix(in srgb, var(--brass) 10%, var(--panel)); color: var(--brass); font-size: 13px; }
+.pill.ok { color: var(--in); border-color: color-mix(in srgb, var(--in) 45%, transparent); }
+.pill.warn { color: var(--brass); border-color: color-mix(in srgb, var(--brass) 50%, transparent); }
+.acct-source { text-transform: none; letter-spacing: 0; }
+.acct-source.warn { color: var(--brass); }
+.tag.review { color: var(--brass); border-color: color-mix(in srgb, var(--brass) 50%, transparent); }
+.row.review .row-date b { color: var(--brass); }
+.chips .chip-review { color: var(--brass); }
+.chips .chip-review .num { margin-left: 6px; font-family: var(--mono); font-size: 11px; opacity: .8; }
+.review-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; margin-top: 14px; padding: 12px 14px; border-radius: var(--r-sm); background: color-mix(in srgb, var(--brass) 9%, var(--panel)); font-size: 13px; color: var(--muted); }
+@media (max-width: 520px) { .row-sub .tag.review { display: inline-block; width: 7px; height: 7px; padding: 0; border: 0; border-radius: 50%; background: var(--brass); font-size: 0; } }

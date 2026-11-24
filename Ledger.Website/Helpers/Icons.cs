@@ -38,6 +38,8 @@ public static class Icons
         ["server"] = "<rect x=\"3.5\" y=\"4\" width=\"17\" height=\"7\" rx=\"2.5\"/><rect x=\"3.5\" y=\"13\" width=\"17\" height=\"7\" rx=\"2.5\"/><path d=\"M7.5 7.5h.01M7.5 16.5h.01\"/>",
         ["file"] = "<path d=\"M6 3h9l4 4v14H6z\"/><path d=\"M14 3v5h5M9 13h7M9 17h5\"/>",
         ["target"] = "<circle cx=\"12\" cy=\"12\" r=\"8.5\"/><circle cx=\"12\" cy=\"12\" r=\"4\"/><path d=\"M12 12h.01\"/>",
+        ["bank"] = "<path d=\"M3.5 9.5 12 4.5l8.5 5\"/><path d=\"M5.5 10v7.5M10 10v7.5M14 10v7.5M18.5 10v7.5M3.5 20h17\"/>",
+        ["refresh"] = "<path d=\"M19.5 12a7.5 7.5 0 1 1-2.2-5.3\"/><path d=\"M19.5 4.5v4h-4\"/>",
         ["bolt"] = "<path d=\"M13 3L5 13.5h6L10 21l9-11.5h-6z\"/>",
     };
 

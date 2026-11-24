@@ -1,4 +1,7 @@
 @* The dialog that adds an account or changes one (the page script fills it in from the row that opened it). *@
+@{
+    var obol = ViewData.Model is AppPageModel { ObolEnabled: true };
+}
 <dialog class="sheet" id="account-dialog">
     <form class="sheet-body" data-ajax action="/accounts/save" method="post">
         <div class="sheet-top">
@@ -23,10 +26,29 @@
             <span>@L.T("Opening balance", "Saldo inicial")</span>
             <input type="text" class="mono" name="openingBalance" inputmode="decimal" placeholder="@L.Input(0m)" autocomplete="off" />
         </label>
-        <p class="note">@L.T("What was in the account before the first entry you write down. Every entry moves the balance from there.", "O que estava na conta antes do primeiro movimento que registas. Cada movimento mexe no saldo a partir daí.")</p>
+        <p class="note" data-from-entries>@L.T("What was in the account before the first entry you write down. Every entry moves the balance from there.", "O que estava na conta antes do primeiro movimento que registas. Cada movimento mexe no saldo a partir daí.")</p>
+        @if (obol)
+        {
+            <label class="field">
+                <span>@L.T("Balance", "Saldo")</span>
+                <select name="valueSource" data-value-source>
+                    <option value="">@L.T("Worked out from its entries", "Calculado pelos movimentos")</option>
+                    <option value="Obol">@L.T("Its value in Obol (investments)", "O valor no Obol (investimentos)")</option>
+                </select>
+            </label>
+            <label class="field" data-obol-only hidden>
+                <span>@L.T("User name in Obol", "Utilizador no Obol")</span>
+                <input type="text" name="valueRef" maxlength="64" autocomplete="off" placeholder="@L.T("Same as here", "O mesmo que aqui")" />
+            </label>
+            <p class="note" data-obol-only hidden>@L.T("The balance becomes what your portfolio is worth in Obol, cash included, refreshed every half hour. Transfers into it still show as entries, but don't move the value.", "O saldo passa a ser o que a tua carteira vale no Obol, com o dinheiro em caixa, atualizado de meia em meia hora. As transferências para lá continuam a aparecer como movimentos, mas não mexem no valor.")</p>
+        }
         <div class="form-msg" hidden role="alert"></div>
         <div class="form-foot">
             <button type="button" class="btn danger" data-edit-only hidden data-post="/accounts/delete" data-id-from="id" data-confirm>@Icons.Get("trash")<span class="sr">@L.T("Delete account", "Apagar conta")</span></button>
+            @if (obol)
+            {
+                <button type="button" class="btn" data-obol-only data-edit-only hidden data-post="/accounts/refresh" data-id-from="id">@L.T("Refresh now", "Atualizar já")</button>
+            }
             <button type="submit" class="btn primary">@L.T("Save", "Guardar")</button>
         </div>
     </form>

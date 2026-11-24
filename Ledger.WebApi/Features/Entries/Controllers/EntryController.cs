@@ -113,4 +113,19 @@ internal sealed class EntryController(
 
         return (await _entryService.DeletePlanAsync(userId, planId)).ToActionResult();
     }
+
+    /// <summary>Marks entries brought from the bank as looked at.</summary>
+    /// <param name="item">The entries (none: all of them).</param>
+    /// <returns>How many changed.</returns>
+    [HttpPost("reviewed")]
+    [ProducesResponseType<int>((int)HttpStatusCode.OK)]
+    [ProducesResponseType((int)HttpStatusCode.NotFound)]
+    [SwaggerOperation(Summary = "EntryReviewed", OperationId = "EntryReviewed")]
+    public async Task<ActionResult<int>> EntryReviewedAsync(EntryReviewedRequest item)
+    {
+        if (_logger.IsEnabled(LogLevel.Information))
+            _logger.LogInformation("EntryReviewed [UserId={UserId}, Count={Count}]", item.UserId, item.Ids?.Count ?? 0);
+
+        return (await _entryService.ReviewedAsync(item)).ToActionResult();
+    }
 }

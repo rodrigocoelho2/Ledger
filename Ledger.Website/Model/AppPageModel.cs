@@ -67,6 +67,9 @@ public class AppPageModel
 
     /// <summary>Gets a value indicating whether any optional module is on (then entries say which part of life they belong to).</summary>
     public bool HasModules => RentalEnabled || FlipsEnabled;
+
+    /// <summary>Gets or sets a value indicating whether accounts can take their value from Obol.</summary>
+    public bool ObolEnabled { get; set; }
 }
 
 /// <summary>The public page that says what Ledger is.</summary>
@@ -140,6 +143,21 @@ public sealed class SettingsPageModel : AppPageModel
 
     /// <summary>Gets or sets a value indicating whether the app runs on the sample ledger.</summary>
     public bool DemoMode { get; set; }
+
+    /// <summary>Gets or sets the bank connections.</summary>
+    public BankStatusDTO? Bank { get; set; }
+
+    /// <summary>Gets or sets the banks that can be connected (empty when Enable Banking didn't answer).</summary>
+    public List<BankChoiceDTO> Banks { get; set; } = [];
+
+    /// <summary>Gets or sets why the bank list couldn't be read.</summary>
+    public string? BanksProblem { get; set; }
+
+    /// <summary>Gets or sets the person's accounts (to pick where a bank account goes).</summary>
+    public List<AccountDTO> Accounts { get; set; } = [];
+
+    /// <summary>Gets or sets a value indicating whether an authorisation is under way (the person may paste where they landed).</summary>
+    public bool BankPending { get; set; }
 }
 
 /// <summary>The form that adds or changes an entry.</summary>

@@ -23,6 +23,8 @@ public sealed class SettingController(LedgerClient apiClient, Lang lang, IOption
     /// <summary>The largest file an import takes, in bytes.</summary>
     public const long MaxImportBytes = 8_000_000;
 
+    private static (DateTime At, List<BankChoiceDTO> List)? banks;
+
     /// <summary>The settings page.</summary>
     /// <param name="discord">What the Discord step just did (from its redirect).</param>
     /// <returns>The page.</returns>
@@ -34,8 +36,35 @@ public sealed class SettingController(LedgerClient apiClient, Lang lang, IOption
         {
             model.Me = await Api.UserGetAsync(UserId);
             model.Users = model.IsAdmin ? await Api.UserListAsync() : [];
-            model.DemoMode = (await Api.UserStatusAsync()).DemoMode;
+            model.DemoMode = (await StatusAsync()).DemoMode;
+            model.Bank = await Api.BankStatusAsync(UserId);
+            model.Accounts = await Api.AccountListAsync(UserId);
+            model.BankPending = Request.Cookies.ContainsKey(BankController.StateCookie);
+            if (model.Bank.Enabled)
+            {
+                (model.Banks, model.BanksProblem) = await BanksAsync();
+            }
         });
+    }
+
+    /// <summary>The banks of Portugal, kept for half a day (they rarely change, and Enable Banking need not be asked on every visit).</summary>
+    private async Task<(List<BankChoiceDTO> Banks, string? Problem)> BanksAsync()
+    {
+        if (banks is { } kept && DateTime.UtcNow - kept.At < TimeSpan.FromHours(12))
+        {
+            return (kept.List, null);
+        }
+
+        try
+        {
+            var list = await Api.BankListAsync("PT");
+            banks = (DateTime.UtcNow, list);
+            return (list, null);
+        }
+        catch (LedgerApiException exception)
+        {
+            return ([], string.Join(" ", exception.ToValidationErrors().Select(static error => error.Message).Distinct()));
+        }
     }
 
     /// <summary>Switches the optional modules on or off. Off, a module's tab steps aside; nothing it holds is deleted.</summary>

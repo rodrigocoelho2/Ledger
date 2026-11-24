@@ -48,6 +48,19 @@ internal interface IEntryRepository
     /// <returns>How many entries were deleted.</returns>
     Task<int> DeletePlanAsync(Guid userId, Guid planKey);
 
+    /// <summary>Ties an entry written by hand to the bank transaction it turned out to be.</summary>
+    /// <param name="userId">The user.</param>
+    /// <param name="entryId">The entry.</param>
+    /// <param name="externalId">The bank's id for the transaction.</param>
+    /// <returns>A task that completes when it is tied.</returns>
+    Task AttachExternalAsync(Guid userId, Guid entryId, string externalId);
+
+    /// <summary>Marks entries brought from the bank as looked at.</summary>
+    /// <param name="userId">The user.</param>
+    /// <param name="entryIds">The entries (empty: every one of the person).</param>
+    /// <returns>How many changed.</returns>
+    Task<int> ReviewedAsync(Guid userId, IReadOnlyList<Guid> entryIds);
+
     /// <summary>Adds many entries at once.</summary>
     /// <param name="userId">The user.</param>
     /// <param name="rows">The entries.</param>
@@ -110,6 +123,14 @@ internal sealed class EntryRepository(ISqlConnectionFactory connectionFactory) :
     /// <inheritdoc />
     public Task<int> DeletePlanAsync(Guid userId, Guid planKey) =>
         ExecuteScalarAsync<int>("[dbo].[EntryPlanDelete]", new { UserUniqueID = userId, PlanKey = planKey });
+
+    /// <inheritdoc />
+    public Task<int> ReviewedAsync(Guid userId, IReadOnlyList<Guid> entryIds) =>
+        ExecuteScalarAsync<int>("[dbo].[EntryReviewed]", new { UserUniqueID = userId, Entries = entryIds.Count == 0 ? null : Json(entryIds) });
+
+    /// <inheritdoc />
+    public Task AttachExternalAsync(Guid userId, Guid entryId, string externalId) =>
+        ExecuteAsync("[dbo].[EntryAttachExternal]", new { UserUniqueID = userId, EntryUniqueID = entryId, ExternalID = externalId });
 
     /// <inheritdoc />
     public async Task<int> ImportAsync(Guid userId, IReadOnlyList<EntryRow> rows) =>
@@ -208,6 +229,10 @@ internal sealed class MemoryEntryRepository(MemoryStore store, TimeProvider time
             copy.PlanKey = ledger.Entries[index].PlanKey;
             copy.PlanPart = ledger.Entries[index].PlanPart;
             copy.PlanParts = ledger.Entries[index].PlanParts;
+
+            // ...and an entry that came from the bank keeps its id, and is now reviewed.
+            copy.ExternalID = ledger.Entries[index].ExternalID;
+            copy.Review = null;
             ledger.Entries[index] = copy;
             return Task.FromResult<Guid?>(copy.EntryUniqueID);
         }
@@ -218,7 +243,13 @@ internal sealed class MemoryEntryRepository(MemoryStore store, TimeProvider time
     {
         lock (store.Gate)
         {
-            store.For(userId).Entries.RemoveAll(entry => entry.EntryUniqueID == entryId);
+            var ledger = store.For(userId);
+            foreach (var entry in ledger.Entries.Where(entry => entry.EntryUniqueID == entryId && entry.ExternalID is not null))
+            {
+                ledger.BankIgnored.Add(entry.ExternalID!);
+            }
+
+            ledger.Entries.RemoveAll(entry => entry.EntryUniqueID == entryId);
         }
 
         return Task.CompletedTask;
@@ -234,6 +265,38 @@ internal sealed class MemoryEntryRepository(MemoryStore store, TimeProvider time
     }
 
     /// <inheritdoc />
+    public Task<int> ReviewedAsync(Guid userId, IReadOnlyList<Guid> entryIds)
+    {
+        lock (store.Gate)
+        {
+            var changed = 0;
+            foreach (var entry in store.For(userId).Entries.Where(entry => entry.Review == true && (entryIds.Count == 0 || entryIds.Contains(entry.EntryUniqueID))))
+            {
+                entry.Review = null;
+                changed++;
+            }
+
+            return Task.FromResult(changed);
+        }
+    }
+
+    /// <inheritdoc />
+    public Task AttachExternalAsync(Guid userId, Guid entryId, string externalId)
+    {
+        lock (store.Gate)
+        {
+            var ledger = store.For(userId);
+            if (ledger.Entries.All(entry => entry.ExternalID != externalId)
+                && ledger.Entries.FirstOrDefault(entry => entry.EntryUniqueID == entryId && entry.ExternalID is null) is { } entry)
+            {
+                entry.ExternalID = externalId;
+            }
+        }
+
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
     public Task<int> ImportAsync(Guid userId, IReadOnlyList<EntryRow> rows)
     {
         lock (store.Gate)
@@ -244,6 +307,12 @@ internal sealed class MemoryEntryRepository(MemoryStore store, TimeProvider time
             foreach (var row in rows)
             {
                 if (row.Amount <= 0 || string.IsNullOrEmpty(row.Name))
+                {
+                    continue;
+                }
+
+                // Like dbo.EntryImport: a bank transaction already here, or deleted before, stays out.
+                if (row.ExternalID is { } external && (ledger.BankIgnored.Contains(external) || ledger.Entries.Any(entry => entry.ExternalID == external)))
                 {
                     continue;
                 }
@@ -267,7 +336,16 @@ internal sealed class MemoryEntryRepository(MemoryStore store, TimeProvider time
     {
         lock (store.Gate)
         {
+            // Like dbo.LedgerReset: the bank connections stay, with nowhere to go until the person picks again.
+            var links = store.Ledgers.TryGetValue(userId, out var old) ? old.BankLinks : [];
             store.Ledgers.Remove(userId);
+            foreach (var link in links)
+            {
+                link.AccountUniqueID = null;
+                link.LastSyncAt = null;
+                link.BankBalance = null;
+                store.For(userId).BankLinks.Add(link);
+            }
         }
 
         return Task.CompletedTask;
@@ -291,6 +369,8 @@ internal sealed class MemoryEntryRepository(MemoryStore store, TimeProvider time
         PlanKey = entry.PlanKey,
         PlanPart = entry.PlanPart,
         PlanParts = entry.PlanParts,
+        ExternalID = entry.ExternalID,
+        Review = entry.Review,
     };
 }
 

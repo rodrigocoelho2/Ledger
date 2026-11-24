@@ -103,6 +103,17 @@
   Ledger tells you what would be left and the return — counting the part of the price still to pay and the works still
   to do.
 
+**Your bank and your investments** — optional
+
+- **Your bank account, read only**: connect Crédito Agrícola (or most Portuguese banks) through
+  [Enable Banking](https://enablebanking.com) — open banking (PSD2), you authorise at the bank itself. Its movements
+  come in every few hours on their own: what you already wrote by hand is **recognised and not added twice** (same
+  account, same amount, up to 3 days apart), the rest comes in **"to review"** with a guessed category. The balance
+  **agrees with the bank's**, and if it ever drifts Ledger says by how much and matches it in one tap. Deleting a
+  movement that came from the bank keeps it out for good.
+- **Investments from Obol**: an account can take its balance from [Obol](https://github.com/rodrigocoelho2/Obol) —
+  what the portfolio is worth, refreshed every half hour, with the month's gain or loss on the Overview.
+
 **Modules you switch on**
 
 - Your **main account is always there**. The rental and Buy & Sell are **off until you switch them on** in Settings;
@@ -257,6 +268,34 @@ Settings → **Your data**:
   headers and category names included. Entries that are already there are skipped, so importing the same file twice is
   safe. Accounts and projects it names are created.
 - **Start over**: erases every entry, account, project and cap, and leaves the four starter accounts. Export first.
+
+## Your bank (Enable Banking)
+
+Optional. Ledger reads your own accounts — never moves money — through Enable Banking, free for personal use.
+
+1. Sign up at [enablebanking.com](https://enablebanking.com) and open the **Control panel → Applications → Add a new
+   application**: environment **Production**, redirect URL `https://<where you open Ledger>/bank/callback` (it must be
+   HTTPS: the Nginx Proxy Manager address, or a `tailscale serve` one), and **generate the private key in the
+   browser**. It downloads as `<application-id>.pem`.
+2. On the application, **Activate by linking accounts** and link your own account at your bank: the free plan only
+   reads the accounts linked there.
+3. Put the `.pem` next to `docker-compose.yml` on the NAS and run `deploy/prometheus-setup.sh` again — it puts
+   `ENABLEBANKING_APP_ID` and `ENABLEBANKING_KEY` (the key in base64) into `.env` and updates Ledger. Elsewhere, set
+   them by hand: `ENABLEBANKING_KEY=$(base64 -w0 <application-id>.pem)`.
+4. In Ledger: **Settings → Bank → Go to the bank**, sign in at the bank, pick the account. Back in Ledger, choose the
+   account its movements go into (or a new one) and the first day to bring. Done: it syncs every `BANK_SYNC_HOURS`
+   (8 by default; banks allow about four syncs a day without you), and **Sync now** whenever you like.
+
+The bank's authorisation lasts 90 to 180 days; when it ends, Settings says so and **Go to the bank** renews it —
+nothing is lost. If the bank sends you back to an address that isn't Ledger's (one registered for another place you
+open it from), copy that address and paste it in **Settings → Bank**.
+
+## Investments from Obol
+
+Optional. Set `OBOL_API_KEY` (the same as in Obol's `.env`; the setup script copies it) and, if Obol isn't at
+`http://obol-webapi:8080` on `sql-net`, `OBOL_URL`. Then open the investments account, set **Balance → Its value in
+Obol**, and the Obol user name if it isn't the same as in Ledger. Transfers into that account still show as entries
+but don't move its value — Obol already counts the money.
 
 ## Sign in with Discord
 

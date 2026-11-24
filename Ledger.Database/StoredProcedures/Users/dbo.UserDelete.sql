@@ -1,7 +1,8 @@
 /*
     UserDelete
     Deletes a user and everything they own. The entries go first (they point at the accounts and the projects), then the
-    projects, the accounts and the user; the settings and the spending caps follow through their cascading keys.
+    projects, the bank links, the accounts and the user; the settings, the spending caps, the account values and the
+    ignored bank transactions follow through their cascading keys.
 */
 CREATE PROCEDURE [dbo].[UserDelete]
     @UserUniqueID UNIQUEIDENTIFIER
@@ -20,6 +21,9 @@ BEGIN
     WHERE [UserID] = @UserID;
 
     DELETE FROM [dbo].[Project]
+    WHERE [UserID] = @UserID;
+
+    DELETE FROM [dbo].[BankLink]
     WHERE [UserID] = @UserID;
 
     DELETE FROM [dbo].[Account]

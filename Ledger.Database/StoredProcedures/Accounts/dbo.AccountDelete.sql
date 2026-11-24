@@ -1,7 +1,7 @@
 /*
     AccountDelete
     Deletes an account. Its entries stay in the ledger with the account emptied, so the months already closed keep
-    their totals; they just stop counting towards any balance.
+    their totals; they just stop counting towards any balance. A bank linked to it waits for another account.
 */
 CREATE PROCEDURE [dbo].[AccountDelete]
     @UserUniqueID    UNIQUEIDENTIFIER,
@@ -29,6 +29,10 @@ BEGIN
     UPDATE [dbo].[Entry]
     SET [ToAccountID] = NULL
     WHERE [ToAccountID] = @AccountID;
+
+    UPDATE [dbo].[BankLink]
+    SET [AccountID] = NULL
+    WHERE [AccountID] = @AccountID;
 
     DELETE FROM [dbo].[Account]
     WHERE [AccountID] = @AccountID;

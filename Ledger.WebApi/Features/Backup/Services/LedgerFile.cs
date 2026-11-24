@@ -35,6 +35,7 @@ internal sealed record FileProject(string Name, decimal? TargetSale, decimal? Wo
 /// <param name="Plan">The instalment plan it belongs to (null: none).</param>
 /// <param name="PlanPart">Which instalment it is.</param>
 /// <param name="PlanParts">How many instalments the plan has.</param>
+/// <param name="External">The bank's id for it, when it came from the bank (JSON only).</param>
 internal sealed record FileEntry(
     DateOnly Day,
     EntryKind Kind,
@@ -49,7 +50,8 @@ internal sealed record FileEntry(
     string? Channel,
     Guid? Plan = null,
     int? PlanPart = null,
-    int? PlanParts = null);
+    int? PlanParts = null,
+    string? External = null);
 
 /// <summary>Everything read from a file.</summary>
 internal sealed class FileLedger
@@ -188,6 +190,7 @@ internal static class LedgerFile
                 Plan = entry.Plan?.ToString("N"),
                 PlanPart = entry.PlanPart,
                 PlanParts = entry.PlanParts,
+                External = entry.External,
                 Amount = entry.Amount,
             })],
         },
@@ -366,7 +369,8 @@ internal static class LedgerFile
                     Empty(Short(entry.Channel ?? string.Empty, EntryService.ChannelLength)),
                     plan,
                     planPart,
-                    planParts));
+                    planParts,
+                    Empty(Short(entry.External ?? string.Empty, 100))));
             }
 
             return ledger;
@@ -662,6 +666,8 @@ internal static class LedgerFile
         public int? PlanPart { get; set; }
 
         public int? PlanParts { get; set; }
+
+        public string? External { get; set; }
 
         public decimal Amount { get; set; }
     }

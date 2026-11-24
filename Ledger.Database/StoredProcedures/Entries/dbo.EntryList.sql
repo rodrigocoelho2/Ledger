@@ -28,7 +28,9 @@ BEGIN
            e.[CreatedAt],
            e.[PlanKey],
            e.[PlanPart],
-           e.[PlanParts]
+           e.[PlanParts],
+           e.[ExternalID],
+           e.[Review]
     FROM [dbo].[Entry] e
     INNER JOIN [dbo].[User] u ON u.[UserID] = e.[UserID]
     LEFT JOIN [dbo].[Account] a ON a.[AccountID] = e.[AccountID]

@@ -6,6 +6,7 @@ using Ledger.WebApi.Extensions.Services;
 using Ledger.WebApi.Features.Accounts.Models.DTOs;
 using Ledger.WebApi.Features.Accounts.Models.Entities;
 using Ledger.WebApi.Features.Accounts.Repositories;
+using Microsoft.Extensions.Options;
 
 namespace Ledger.WebApi.Features.Accounts.Services;
 
@@ -34,23 +35,38 @@ internal interface IAccountService
     /// <param name="item">The order.</param>
     /// <returns>The accounts in their new order.</returns>
     Task<ServiceApiResponse<List<AccountDTO>>> ReorderAsync(AccountOrderRequest item);
+
+    /// <summary>Asks an account valued elsewhere for its value now.</summary>
+    /// <param name="userId">The user.</param>
+    /// <param name="identifier">The account.</param>
+    /// <returns>The account.</returns>
+    Task<ServiceApiResponse<AccountDTO>> RefreshAsync(string? userId, string? identifier);
 }
 
 /// <summary>
 /// Account business logic.
 /// </summary>
 /// <param name="accountRepository">The accounts.</param>
+/// <param name="valuationService">Values from elsewhere.</param>
+/// <param name="options">The app's options.</param>
 /// <param name="globalizationHelper">Translations.</param>
 internal sealed class AccountService(
     IAccountRepository accountRepository,
+    IValuationService valuationService,
+    IOptions<LedgerOptions> options,
     IGlobalizationHelper globalizationHelper) : LedgerServiceBase(globalizationHelper), IAccountService
 {
+    /// <summary>The longest user name at a value source.</summary>
+    public const int ValueRefLength = 64;
+
     /// <summary>The longest name of an account.</summary>
     public const int NameLength = 60;
 
     private const string FieldName = "Name";
     private const string FieldKind = "Kind";
     private const string FieldOpeningBalance = "OpeningBalance";
+    private const string FieldValueSource = "ValueSource";
+    private const string FieldValueRef = "ValueRef";
 
     private readonly IAccountRepository _accountRepository = accountRepository;
 
@@ -62,7 +78,7 @@ internal sealed class AccountService(
             return await MissingAsync<List<AccountDTO>>(userId);
         }
 
-        return ServiceApiResponse<List<AccountDTO>>.Success((await _accountRepository.ListAsync(id)).Select(ToDTO).ToList());
+        return ServiceApiResponse<List<AccountDTO>>.Success((await _accountRepository.ListAsync(id)).Select(Map).ToList());
     }
 
     /// <inheritdoc />
@@ -108,14 +124,31 @@ internal sealed class AccountService(
             errors.Add(await ErrorAsync(FieldOpeningBalance, nameof(TranslationKeys.OutOfRange), -MaxAmount, MaxAmount));
         }
 
+        var source = item.ValueSource is { } wanted && Enum.IsDefined(wanted) ? wanted : (ValueSource?)null;
+        var valueRef = string.IsNullOrWhiteSpace(item.ValueRef) || source is null ? null : item.ValueRef.Trim();
+        if (valueRef is { Length: > ValueRefLength })
+        {
+            errors.Add(await ErrorAsync(FieldValueRef, nameof(TranslationKeys.TooLong), ValueRefLength));
+        }
+
         if (errors.Count > 0)
         {
             return await InvalidAsync<AccountDTO>(errors);
         }
 
-        var saved = await _accountRepository.SaveAsync(userId, accountId, name, kind, openingBalance);
+        if (source == ValueSource.Obol && !options.Value.ObolEnabled)
+        {
+            return await ProblemAsync<AccountDTO>(FieldValueSource, nameof(TranslationKeys.ObolOff));
+        }
+
+        var saved = await _accountRepository.SaveAsync(userId, accountId, name, kind, openingBalance, source, valueRef);
+        if (saved is { } savedId && source is not null)
+        {
+            await valuationService.RefreshAsync(userId, savedId);
+        }
+
         var row = saved is null ? null : (await _accountRepository.ListAsync(userId)).FirstOrDefault(account => account.AccountUniqueID == saved);
-        return row is null ? await MissingAsync<AccountDTO>(item.Id ?? name) : ServiceApiResponse<AccountDTO>.Success(ToDTO(row));
+        return row is null ? await MissingAsync<AccountDTO>(item.Id ?? name) : ServiceApiResponse<AccountDTO>.Success(Map(row));
     }
 
     /// <inheritdoc />
@@ -153,18 +186,60 @@ internal sealed class AccountService(
             await _accountRepository.ReorderAsync(userId, order);
         }
 
-        return ServiceApiResponse<List<AccountDTO>>.Success((await _accountRepository.ListAsync(userId)).Select(ToDTO).ToList());
+        return ServiceApiResponse<List<AccountDTO>>.Success((await _accountRepository.ListAsync(userId)).Select(Map).ToList());
     }
+
+    /// <inheritdoc />
+    public async Task<ServiceApiResponse<AccountDTO>> RefreshAsync(string? userId, string? identifier)
+    {
+        if (!TryUser(userId, out var id) || !Guid.TryParse(identifier, out var accountId))
+        {
+            return await MissingAsync<AccountDTO>(identifier);
+        }
+
+        var account = (await _accountRepository.ListAsync(id)).FirstOrDefault(row => row.AccountUniqueID == accountId);
+        if (account is null)
+        {
+            return await MissingAsync<AccountDTO>(identifier);
+        }
+
+        if (account.ValueSource is not null)
+        {
+            if (!options.Value.ObolEnabled)
+            {
+                return await ProblemAsync<AccountDTO>(FieldValueSource, nameof(TranslationKeys.ObolOff));
+            }
+
+            if (await valuationService.RefreshAsync(id, accountId) is { } error)
+            {
+                return await ProblemAsync<AccountDTO>(FieldValueSource, nameof(TranslationKeys.ObolFailed), error);
+            }
+
+            account = (await _accountRepository.ListAsync(id)).First(row => row.AccountUniqueID == accountId);
+        }
+
+        return ServiceApiResponse<AccountDTO>.Success(Map(account));
+    }
+
+    private AccountDTO Map(AccountRow row) => ToDTO(row, row.ValueSource is null ? null : valuationService.ErrorOf(row.AccountUniqueID));
 
     /// <summary>Maps a row to what the Website sees.</summary>
     /// <param name="row">The row.</param>
+    /// <param name="valueError">What went wrong the last time its value was asked for.</param>
     /// <returns>The account.</returns>
-    internal static AccountDTO ToDTO(AccountRow row) => new()
+    internal static AccountDTO ToDTO(AccountRow row, string? valueError = null) => new()
     {
         Id = Id(row.AccountUniqueID),
         Name = row.Name,
         Kind = Enum.IsDefined((AccountKind)row.Kind) ? (AccountKind)row.Kind : AccountKind.Current,
         OpeningBalance = row.OpeningBalance,
         Balance = row.Balance,
+        ValueSource = row.ValueSource is { } source && Enum.IsDefined((ValueSource)source) ? (ValueSource)source : null,
+        ValueRef = row.ValueRef,
+        ValueDate = row.ValueDate is { } day ? DateOnly.FromDateTime(day) : null,
+        ValueError = valueError,
+        BankName = row.BankName,
+        BankSyncedAt = row.BankSyncedAt is { } at ? new DateTimeOffset(DateTime.SpecifyKind(at, DateTimeKind.Utc)) : null,
+        BankDifference = row.BankName is not null && row.BankBalance is { } bank ? row.Balance - bank : null,
     };
 }

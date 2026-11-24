@@ -1,4 +1,5 @@
 using Ledger.WebApi.Features.Accounts.Models.Entities;
+using Ledger.WebApi.Features.Banks.Models.Entities;
 using Ledger.WebApi.Features.Entries.Models.Entities;
 using Ledger.WebApi.Features.Projects.Models.Entities;
 using Ledger.WebApi.Features.Users.Models.Entities;
@@ -53,4 +54,13 @@ internal sealed class MemoryLedger
 
     /// <summary>Gets the spending caps, by the first day of the month.</summary>
     public Dictionary<DateOnly, decimal> Caps { get; } = [];
+
+    /// <summary>Gets the values of the accounts valued elsewhere, by account and day.</summary>
+    public Dictionary<(Guid Account, DateOnly Day), decimal> Values { get; } = [];
+
+    /// <summary>Gets the connected bank accounts.</summary>
+    public List<BankLinkRow> BankLinks { get; } = [];
+
+    /// <summary>Gets the bank transactions deleted after they were imported.</summary>
+    public HashSet<string> BankIgnored { get; } = new(StringComparer.Ordinal);
 }

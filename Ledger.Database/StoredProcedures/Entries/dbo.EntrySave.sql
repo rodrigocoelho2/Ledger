@@ -1,7 +1,8 @@
 /*
     EntrySave
     Adds an entry (NULL @EntryUniqueID) or changes one. The accounts and the project are looked up among this person's
-    own; one that isn't theirs is left empty. Changing an instalment keeps it in its plan. Returns the entry's identifier,
+    own; one that isn't theirs is left empty. Changing an instalment keeps it in its plan; saving an entry that came
+    from the bank marks it reviewed. Returns the entry's identifier,
     or NULL when the entry to change isn't this person's.
 */
 CREATE PROCEDURE [dbo].[EntrySave]
@@ -54,7 +55,8 @@ BEGIN
             [ToAccountID] = @ToAccountID,
             [ProjectID] = @ProjectID,
             [Nights] = @Nights,
-            [Channel] = @Channel
+            [Channel] = @Channel,
+            [Review] = NULL
         WHERE [EntryUniqueID] = @EntryUniqueID
           AND [UserID] = @UserID;
 

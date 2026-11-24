@@ -39,6 +39,8 @@ internal sealed class EntryMapper(IEnumerable<AccountRow> accounts, IEnumerable<
         PlanId = row.PlanKey?.ToString("N"),
         PlanPart = row.PlanPart,
         PlanParts = row.PlanParts,
+        FromBank = row.ExternalID is not null,
+        Review = row.Review == true,
     };
 
     /// <summary>Maps many rows, keeping their order.</summary>

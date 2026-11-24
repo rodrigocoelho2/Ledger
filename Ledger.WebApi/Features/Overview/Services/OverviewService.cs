@@ -92,6 +92,7 @@ internal sealed class OverviewService(
         var monthOfEveryScope = everything.Where(entry => entry.Day >= start && entry.Day <= end && entry.Day <= today).ToList();
         var ahead = await _entryRepository.ListAsync(id, today.AddDays(1), null);
         var plans = OverviewMath.Plans(ahead, accounts.ToDictionary(static account => account.AccountUniqueID, static account => account.Name));
+        var values = accounts.Any(static account => account.ValueSource is not null) ? await _accountRepository.ValuesAsync(id, start) : [];
         var caps = await _capRepository.ListAsync(id);
         decimal? cap = caps.TryGetValue(start, out var amount) ? amount : null;
         var mapper = new EntryMapper(accounts, await _projectRepository.ListAsync(id));
@@ -116,7 +117,9 @@ internal sealed class OverviewService(
             Accounts = accounts.Select(account =>
             {
                 var dto = AccountService.ToDTO(account);
-                dto.MonthChange = Balances.Movement(account.AccountUniqueID, monthOfEveryScope);
+                dto.MonthChange = account.ValueSource is null
+                    ? Balances.Movement(account.AccountUniqueID, monthOfEveryScope)
+                    : OverviewMath.ValueChange(values.Where(value => value.AccountUniqueID == account.AccountUniqueID), start, end);
                 return dto;
             }).ToList(),
             Entries = mapper.Map(ofMonth.Take(LatestEntries)),

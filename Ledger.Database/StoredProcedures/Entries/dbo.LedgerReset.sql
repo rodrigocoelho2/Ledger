@@ -1,7 +1,7 @@
 /*
     LedgerReset
     Start over: deletes every entry, project, account and spending cap of a person. The user and what they chose in
-    Settings stay.
+    Settings stay, and so do the connected banks, waiting for an account again.
 */
 CREATE PROCEDURE [dbo].[LedgerReset]
     @UserUniqueID UNIQUEIDENTIFIER
@@ -20,6 +20,13 @@ BEGIN
     WHERE [UserID] = @UserID;
 
     DELETE FROM [dbo].[Project]
+    WHERE [UserID] = @UserID;
+
+    UPDATE [dbo].[BankLink]
+    SET [AccountID] = NULL, [LastSyncAt] = NULL, [BankBalance] = NULL
+    WHERE [UserID] = @UserID;
+
+    DELETE FROM [dbo].[BankIgnore]
     WHERE [UserID] = @UserID;
 
     DELETE FROM [dbo].[Account]
