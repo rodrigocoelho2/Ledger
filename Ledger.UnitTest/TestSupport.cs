@@ -235,8 +235,14 @@ internal sealed class FakeBank : IEnableBankingClient
         Accounts = [new EbAccount { Uid = "acc-1", Name = "Conta à ordem", AccountId = new EbAccountId { Iban = "PT50 0045 0000 0000 0000 0123 4" } }],
     };
 
-    /// <summary>Gets the transactions of every account.</summary>
+    /// <summary>Gets the transactions of every account (unless the account has its own list).</summary>
     public List<EbTransaction> Transactions { get; } = [];
+
+    /// <summary>Gets the transactions of one account, by its uid.</summary>
+    public Dictionary<string, List<EbTransaction>> ByAccount { get; } = [];
+
+    /// <summary>Gets the booked balance of one account, by its uid.</summary>
+    public Dictionary<string, decimal> BalanceOf { get; } = [];
 
     /// <summary>Gets or sets the booked balance.</summary>
     public decimal? Balance { get; set; }
@@ -283,7 +289,7 @@ internal sealed class FakeBank : IEnableBankingClient
 
     /// <inheritdoc />
     public Task<List<EbBalance>> BalancesAsync(string accountUid, CancellationToken cancellationToken = default) =>
-        Task.FromResult<List<EbBalance>>(Balance is { } balance
+        Task.FromResult<List<EbBalance>>((BalanceOf.TryGetValue(accountUid, out var own) ? own : Balance) is { } balance
             ? [new EbBalance { BalanceType = "ITAV", BalanceAmount = new EbAmount { Amount = (balance + 100).ToString(System.Globalization.CultureInfo.InvariantCulture) } },
                new EbBalance { BalanceType = "CLBD", BalanceAmount = new EbAmount { Amount = balance.ToString(System.Globalization.CultureInfo.InvariantCulture) } }]
             : []);
@@ -297,7 +303,7 @@ internal sealed class FakeBank : IEnableBankingClient
             throw new BankException(Error);
         }
 
-        return Task.FromResult(Transactions
+        return Task.FromResult((ByAccount.TryGetValue(accountUid, out var own) ? own : Transactions)
             .Where(transaction => DateOnly.ParseExact(transaction.BookingDate!, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) is var day && day >= from && day <= to)
             .ToList());
     }

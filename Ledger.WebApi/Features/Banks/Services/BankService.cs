@@ -344,13 +344,13 @@ internal sealed class BankService(
             return await ProblemAsync<BankSyncDTO>(FieldLink, nameof(TranslationKeys.BankOff));
         }
 
-        var (imported, matched, error) = await RunAsync(link, CancellationToken.None);
+        var (imported, matched, transfers, error) = await RunAsync(link, CancellationToken.None);
         if (error is not null && error != Expired)
         {
             return await ProblemAsync<BankSyncDTO>(FieldLink, nameof(TranslationKeys.BankFailed), error);
         }
 
-        return ServiceApiResponse<BankSyncDTO>.Success(new BankSyncDTO { Imported = imported, Matched = matched, Link = await LinkOfAsync(id, key) });
+        return ServiceApiResponse<BankSyncDTO>.Success(new BankSyncDTO { Imported = imported, Matched = matched, Transfers = transfers, Link = await LinkOfAsync(id, key) });
     }
 
     /// <inheritdoc />
@@ -512,11 +512,11 @@ internal sealed class BankService(
     }
 
     /// <summary>One sync of one link; never throws: a failure is kept on the link.</summary>
-    private async Task<(int Imported, int Matched, string? Error)> RunAsync(BankLinkRow link, CancellationToken cancellationToken)
+    private async Task<(int Imported, int Matched, int Transfers, string? Error)> RunAsync(BankLinkRow link, CancellationToken cancellationToken)
     {
         if (link.AccountUniqueID is not { } accountId)
         {
-            return (0, 0, null);
+            return (0, 0, 0, null);
         }
 
         var now = clock.UtcNow;
@@ -524,7 +524,7 @@ internal sealed class BankService(
         if (link.ValidUntil is { } ends && ends <= now)
         {
             await bankRepository.SyncedAsync(link.BankLinkUniqueID, now, Expired, null);
-            return (0, 0, Expired);
+            return (0, 0, 0, Expired);
         }
 
         try
@@ -543,18 +543,39 @@ internal sealed class BankService(
             var balance = BankMath.Balance(await client.BalancesAsync(link.AccountUid, cancellationToken));
 
             var around = await entryRepository.ListAsync(userId, from.AddDays(-BankMath.MatchDays), today.AddDays(BankMath.MatchDays));
-            var known = around.Where(static entry => entry.ExternalID is not null).Select(static entry => entry.ExternalID!).ToHashSet(StringComparer.Ordinal);
-            var taken = new HashSet<Guid>();
+            var known = around.SelectMany(static entry => new[] { entry.ExternalID, entry.ToExternalID }).OfType<string>().ToHashSet(StringComparer.Ordinal);
+            var others = (await bankRepository.ListAsync(userId))
+                .Where(row => row.BankLinkUniqueID != link.BankLinkUniqueID && row.AccountUniqueID is not null)
+                .Select(static row => row.AccountUniqueID!.Value)
+                .ToHashSet();
+            var taken = new HashSet<(Guid, bool)>();
             var matched = 0;
+            var transfers = 0;
             var rows = new List<EntryRow>();
             foreach (var move in moves.Where(move => !known.Contains(move.ExternalId)))
             {
+                // Written by hand already (a transfer between two connected accounts matches on both sides).
                 if (BankMath.Match(move, accountId, around, taken) is { } entry)
                 {
-                    taken.Add(entry.EntryUniqueID);
-                    await entryRepository.AttachExternalAsync(userId, entry.EntryUniqueID, move.ExternalId);
+                    var arriving = BankMath.Arriving(entry, accountId);
+                    taken.Add((entry.EntryUniqueID, arriving));
+                    await entryRepository.AttachExternalAsync(userId, entry.EntryUniqueID, move.ExternalId, arriving);
                     matched++;
                     continue;
+                }
+
+                // The other half of money moved between two connected accounts: one transfer, not spending and income.
+                if (others.Count > 0 && BankMath.Pair(move, accountId, others, around, taken) is { } half)
+                {
+                    var (source, target, leaving, arriving) = move.Kind == EntryKind.Inflow
+                        ? (half.AccountUniqueID!.Value, accountId, half.ExternalID!, move.ExternalId)
+                        : (accountId, half.AccountUniqueID!.Value, move.ExternalId, half.ExternalID!);
+                    if (await entryRepository.MakeTransferAsync(userId, half.EntryUniqueID, source, target, leaving, arriving))
+                    {
+                        taken.Add((half.EntryUniqueID, false));
+                        transfers++;
+                        continue;
+                    }
                 }
 
                 rows.Add(new EntryRow
@@ -580,13 +601,13 @@ internal sealed class BankService(
             }
 
             await bankRepository.SyncedAsync(link.BankLinkUniqueID, clock.UtcNow, null, balance);
-            return (imported, matched, null);
+            return (imported, matched, transfers, null);
         }
         catch (BankException exception)
         {
             var message = exception.Message.Length > 400 ? exception.Message[..400] : exception.Message;
             await bankRepository.SyncedAsync(link.BankLinkUniqueID, clock.UtcNow, message, null);
-            return (0, 0, message);
+            return (0, 0, 0, message);
         }
     }
 

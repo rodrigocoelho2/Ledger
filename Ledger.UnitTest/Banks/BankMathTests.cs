@@ -98,9 +98,9 @@ public sealed class BankMathTests
         var tied = Make.Entry(EntryKind.Outflow, 45m, new DateOnly(2026, 11, 11), account: account);
         tied.ExternalID = "x:0";
 
-        Assert.Same(near, BankMath.Match(move, account, [far, near, elsewhere, tied], new HashSet<Guid>()));
-        Assert.Same(transferOut, BankMath.Match(move, account, [far, transferOut], new HashSet<Guid>()));
-        Assert.Null(BankMath.Match(move, account, [far, near], new HashSet<Guid> { near.EntryUniqueID }));
+        Assert.Same(near, BankMath.Match(move, account, [far, near, elsewhere, tied], new HashSet<(Guid, bool)>()));
+        Assert.Same(transferOut, BankMath.Match(move, account, [far, transferOut], new HashSet<(Guid, bool)>()));
+        Assert.Null(BankMath.Match(move, account, [far, near], new HashSet<(Guid, bool)> { (near.EntryUniqueID, false) }));
         Assert.Equal(EntryKind.Inflow, BankMath.Moves(transferOut, other));
     }
 

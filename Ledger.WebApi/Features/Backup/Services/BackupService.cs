@@ -237,6 +237,7 @@ internal sealed class BackupService(
             PlanPart = (short?)entry.PlanPart,
             PlanParts = (short?)entry.PlanParts,
             ExternalID = entry.External,
+            ToExternalID = entry.ExternalTo,
         };
     }
 
@@ -292,7 +293,8 @@ internal sealed class BackupService(
                 row.PlanKey,
                 row.PlanPart,
                 row.PlanParts,
-                row.ExternalID)));
+                row.ExternalID,
+                row.ToExternalID)));
         return ledger;
     }
 }

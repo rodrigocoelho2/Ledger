@@ -161,23 +161,59 @@ internal static partial class BankMath
 
     /// <summary>
     /// The hand-written entry a bank move turned out to be: same account, same direction, same amount, at most
-    /// <see cref="MatchDays"/> days apart, not tied to the bank yet and not taken by another move; the closest day wins.
+    /// <see cref="MatchDays"/> days apart, that side not tied to the bank yet and not taken by another move; the closest
+    /// day wins. A transfer has two sides: money leaving this account ties to its ExternalID, money arriving to its
+    /// ToExternalID, so one transfer written by hand matches both bank accounts.
     /// </summary>
     /// <param name="move">The bank move.</param>
     /// <param name="accountId">The account the link goes into.</param>
     /// <param name="entries">The entries around those days.</param>
-    /// <param name="taken">The entries already matched in this sync.</param>
+    /// <param name="taken">The entry sides already matched in this sync.</param>
     /// <returns>The entry, or null.</returns>
-    public static EntryRow? Match(BankMove move, Guid accountId, IEnumerable<EntryRow> entries, ISet<Guid> taken) =>
+    public static EntryRow? Match(BankMove move, Guid accountId, IEnumerable<EntryRow> entries, ISet<(Guid, bool)> taken) =>
         entries
-            .Where(entry => entry.ExternalID is null
-                && !taken.Contains(entry.EntryUniqueID)
+            .Where(entry => Moves(entry, accountId) == move.Kind
+                && (Arriving(entry, accountId) ? entry.ToExternalID : entry.ExternalID) is null
+                && !taken.Contains((entry.EntryUniqueID, Arriving(entry, accountId)))
                 && entry.Amount == move.Amount
-                && Math.Abs(entry.Day.DayNumber - move.Day.DayNumber) <= MatchDays
-                && Moves(entry, accountId) == move.Kind)
+                && Math.Abs(entry.Day.DayNumber - move.Day.DayNumber) <= MatchDays)
             .OrderBy(entry => Math.Abs(entry.Day.DayNumber - move.Day.DayNumber))
             .ThenBy(static entry => entry.CreatedAt)
             .FirstOrDefault();
+
+    /// <summary>Whether the side of an entry that touches an account is the arriving side of a transfer.</summary>
+    /// <param name="entry">The entry.</param>
+    /// <param name="accountId">The account.</param>
+    /// <returns>True for a transfer into the account.</returns>
+    public static bool Arriving(EntryRow entry, Guid accountId) =>
+        entry.Kind == (byte)EntryKind.Transfer && entry.ToAccountUniqueID == accountId && entry.AccountUniqueID != accountId;
+
+    /// <summary>
+    /// The other side of a move between two of the person's connected bank accounts: an entry another connected
+    /// account brought in as money in or out, going the opposite way, with the same amount, at most
+    /// <see cref="MatchDays"/> days apart. Both become one transfer, which is neither spending nor income.
+    /// </summary>
+    /// <param name="move">The bank move.</param>
+    /// <param name="accountId">The account the link goes into.</param>
+    /// <param name="others">The person's other accounts with a bank connected.</param>
+    /// <param name="entries">The entries around those days.</param>
+    /// <param name="taken">The entry sides already matched in this sync.</param>
+    /// <returns>The entry, or null.</returns>
+    public static EntryRow? Pair(BankMove move, Guid accountId, IReadOnlyCollection<Guid> others, IEnumerable<EntryRow> entries, ISet<(Guid, bool)> taken)
+    {
+        var opposite = move.Kind == EntryKind.Inflow ? EntryKind.Outflow : EntryKind.Inflow;
+        return entries
+            .Where(entry => entry.ExternalID is not null
+                && entry.ToExternalID is null
+                && entry.Kind == (byte)opposite
+                && entry.AccountUniqueID is { } other && other != accountId && others.Contains(other)
+                && !taken.Contains((entry.EntryUniqueID, false))
+                && entry.Amount == move.Amount
+                && Math.Abs(entry.Day.DayNumber - move.Day.DayNumber) <= MatchDays)
+            .OrderBy(entry => Math.Abs(entry.Day.DayNumber - move.Day.DayNumber))
+            .ThenBy(static entry => entry.CreatedAt)
+            .FirstOrDefault();
+    }
 
     /// <summary>Which way an entry moves an account: money in, money out, or not at all.</summary>
     /// <param name="entry">The entry.</param>

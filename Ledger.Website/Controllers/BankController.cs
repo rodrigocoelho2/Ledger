@@ -170,13 +170,14 @@ public sealed class BankController(LedgerClient apiClient, Lang lang) : WebsiteB
     }
 
     private string Synced(BankSyncDTO result) =>
-        (result.Imported, result.Matched) switch
+        (result.Imported, result.Matched, result.Transfers) switch
         {
-            (0, 0) => L.T("Up to date: nothing new at the bank.", "Em dia: nada de novo no banco."),
-            var (imported, matched) => string.Join(" · ", new[]
+            (0, 0, 0) => L.T("Up to date: nothing new at the bank.", "Em dia: nada de novo no banco."),
+            var (imported, matched, transfers) => string.Join(" · ", new[]
             {
                 imported > 0 ? L.Count(imported, "movement brought, to review", "movements brought, to review", "movimento trazido, por rever", "movimentos trazidos, por rever") : null,
                 matched > 0 ? L.Count(matched, "of yours confirmed by the bank", "of yours confirmed by the bank", "dos teus confirmado pelo banco", "dos teus confirmados pelo banco") : null,
+                transfers > 0 ? L.Count(transfers, "transfer between your accounts", "transfers between your accounts", "transferência entre as tuas contas", "transferências entre as tuas contas") : null,
             }.Where(static part => part is not null)),
         };
 }

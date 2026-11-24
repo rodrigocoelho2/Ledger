@@ -21,15 +21,15 @@ BEGIN
         RETURN;
     END
 
-    INSERT INTO [dbo].[Entry] ([UserID], [Kind], [Scope], [Name], [Amount], [EntryDate], [Category], [AccountID], [ToAccountID], [ProjectID], [Nights], [Channel], [PlanKey], [PlanPart], [PlanParts], [ExternalID], [Review])
+    INSERT INTO [dbo].[Entry] ([UserID], [Kind], [Scope], [Name], [Amount], [EntryDate], [Category], [AccountID], [ToAccountID], [ProjectID], [Nights], [Channel], [PlanKey], [PlanPart], [PlanParts], [ExternalID], [Review], [ToExternalID])
     SELECT @UserID, r.[Kind], r.[Scope], r.[Name], r.[Amount], r.[EntryDate], r.[Category], a.[AccountID], t.[AccountID], p.[ProjectID], r.[Nights], r.[Channel],
-           TRY_CAST(r.[PlanKey] AS UNIQUEIDENTIFIER), r.[PlanPart], r.[PlanParts], r.[ExternalID], r.[Review]
+           TRY_CAST(r.[PlanKey] AS UNIQUEIDENTIFIER), r.[PlanPart], r.[PlanParts], r.[ExternalID], r.[Review], r.[ToExternalID]
     FROM OPENJSON(@Rows) WITH (
         [Kind] TINYINT '$.k', [Scope] TINYINT '$.s', [Name] NVARCHAR (120) '$.n', [Amount] DECIMAL (14, 2) '$.a',
         [EntryDate] DATE '$.d', [Category] VARCHAR (32) '$.c', [AccountKey] NVARCHAR (36) '$.ac', [ToAccountKey] NVARCHAR (36) '$.to',
         [ProjectKey] NVARCHAR (36) '$.p', [Nights] SMALLINT '$.ni', [Channel] NVARCHAR (40) '$.ch',
         [PlanKey] NVARCHAR (36) '$.pk', [PlanPart] SMALLINT '$.pp', [PlanParts] SMALLINT '$.pn',
-        [ExternalID] NVARCHAR (100) '$.x', [Review] BIT '$.rv') AS r
+        [ExternalID] NVARCHAR (100) '$.x', [Review] BIT '$.rv', [ToExternalID] NVARCHAR (100) '$.tx') AS r
     LEFT JOIN [dbo].[Account] a ON a.[AccountUniqueID] = TRY_CAST(r.[AccountKey] AS UNIQUEIDENTIFIER) AND a.[UserID] = @UserID
     LEFT JOIN [dbo].[Account] t ON t.[AccountUniqueID] = TRY_CAST(r.[ToAccountKey] AS UNIQUEIDENTIFIER) AND t.[UserID] = @UserID
     LEFT JOIN [dbo].[Project] p ON p.[ProjectUniqueID] = TRY_CAST(r.[ProjectKey] AS UNIQUEIDENTIFIER) AND p.[UserID] = @UserID
@@ -39,7 +39,7 @@ BEGIN
       AND r.[EntryDate] IS NOT NULL
       AND r.[Name] IS NOT NULL
       AND (r.[ExternalID] IS NULL OR (
-            NOT EXISTS (SELECT 1 FROM [dbo].[Entry] x WHERE x.[UserID] = @UserID AND x.[ExternalID] = r.[ExternalID])
+            NOT EXISTS (SELECT 1 FROM [dbo].[Entry] x WHERE x.[UserID] = @UserID AND (x.[ExternalID] = r.[ExternalID] OR x.[ToExternalID] = r.[ExternalID]))
         AND NOT EXISTS (SELECT 1 FROM [dbo].[BankIgnore] i WHERE i.[UserID] = @UserID AND i.[ExternalID] = r.[ExternalID])));
 
     SELECT @@ROWCOUNT;

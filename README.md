@@ -111,6 +111,9 @@
   account, same amount, up to 3 days apart), the rest comes in **"to review"** with a guessed category. The balance
   **agrees with the bank's**, and if it ever drifts Ledger says by how much and matches it in one tap. Deleting a
   movement that came from the bank keeps it out for good.
+- **Several accounts at the same bank** (say the main one and the savings): connect them in one go and give each its
+  Ledger account. Money moved between them becomes **one transfer** — not spending in one and income in the other —
+  whether you wrote it down first or not.
 - **Investments from Obol**: an account can take its balance from [Obol](https://github.com/rodrigocoelho2/Obol) —
   what the portfolio is worth, refreshed every half hour, with the month's gain or loss on the Overview.
 

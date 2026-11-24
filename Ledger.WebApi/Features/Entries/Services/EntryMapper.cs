@@ -39,7 +39,7 @@ internal sealed class EntryMapper(IEnumerable<AccountRow> accounts, IEnumerable<
         PlanId = row.PlanKey?.ToString("N"),
         PlanPart = row.PlanPart,
         PlanParts = row.PlanParts,
-        FromBank = row.ExternalID is not null,
+        FromBank = row.ExternalID is not null || row.ToExternalID is not null,
         Review = row.Review == true,
     };
 

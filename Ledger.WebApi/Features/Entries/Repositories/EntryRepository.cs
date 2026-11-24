@@ -52,8 +52,22 @@ internal interface IEntryRepository
     /// <param name="userId">The user.</param>
     /// <param name="entryId">The entry.</param>
     /// <param name="externalId">The bank's id for the transaction.</param>
+    /// <param name="arriving">Whether it is the arriving side of a transfer (else the leaving side, or the entry itself).</param>
     /// <returns>A task that completes when it is tied.</returns>
-    Task AttachExternalAsync(Guid userId, Guid entryId, string externalId);
+    Task AttachExternalAsync(Guid userId, Guid entryId, string externalId, bool arriving = false);
+
+    /// <summary>
+    /// Turns an entry brought from one connected bank account into the transfer it was, with the bank's ids of both
+    /// sides (dbo.EntryMakeTransfer).
+    /// </summary>
+    /// <param name="userId">The user.</param>
+    /// <param name="entryId">The entry (an outflow or inflow that came from the bank).</param>
+    /// <param name="from">The account the money left.</param>
+    /// <param name="to">The account it arrived at.</param>
+    /// <param name="externalId">The bank's id of the leaving side.</param>
+    /// <param name="toExternalId">The bank's id of the arriving side.</param>
+    /// <returns>True when it changed.</returns>
+    Task<bool> MakeTransferAsync(Guid userId, Guid entryId, Guid from, Guid to, string externalId, string toExternalId);
 
     /// <summary>Marks entries brought from the bank as looked at.</summary>
     /// <param name="userId">The user.</param>
@@ -129,8 +143,20 @@ internal sealed class EntryRepository(ISqlConnectionFactory connectionFactory) :
         ExecuteScalarAsync<int>("[dbo].[EntryReviewed]", new { UserUniqueID = userId, Entries = entryIds.Count == 0 ? null : Json(entryIds) });
 
     /// <inheritdoc />
-    public Task AttachExternalAsync(Guid userId, Guid entryId, string externalId) =>
-        ExecuteAsync("[dbo].[EntryAttachExternal]", new { UserUniqueID = userId, EntryUniqueID = entryId, ExternalID = externalId });
+    public Task AttachExternalAsync(Guid userId, Guid entryId, string externalId, bool arriving = false) =>
+        ExecuteAsync("[dbo].[EntryAttachExternal]", new { UserUniqueID = userId, EntryUniqueID = entryId, ExternalID = externalId, To = arriving });
+
+    /// <inheritdoc />
+    public async Task<bool> MakeTransferAsync(Guid userId, Guid entryId, Guid from, Guid to, string externalId, string toExternalId) =>
+        await ExecuteScalarAsync<int>("[dbo].[EntryMakeTransfer]", new
+        {
+            UserUniqueID = userId,
+            EntryUniqueID = entryId,
+            AccountUniqueID = from,
+            ToAccountUniqueID = to,
+            ExternalID = externalId,
+            ToExternalID = toExternalId,
+        }) > 0;
 
     /// <inheritdoc />
     public async Task<int> ImportAsync(Guid userId, IReadOnlyList<EntryRow> rows) =>
@@ -232,6 +258,7 @@ internal sealed class MemoryEntryRepository(MemoryStore store, TimeProvider time
 
             // ...and an entry that came from the bank keeps its id, and is now reviewed.
             copy.ExternalID = ledger.Entries[index].ExternalID;
+            copy.ToExternalID = ledger.Entries[index].ToExternalID;
             copy.Review = null;
             ledger.Entries[index] = copy;
             return Task.FromResult<Guid?>(copy.EntryUniqueID);
@@ -244,9 +271,12 @@ internal sealed class MemoryEntryRepository(MemoryStore store, TimeProvider time
         lock (store.Gate)
         {
             var ledger = store.For(userId);
-            foreach (var entry in ledger.Entries.Where(entry => entry.EntryUniqueID == entryId && entry.ExternalID is not null))
+            foreach (var entry in ledger.Entries.Where(entry => entry.EntryUniqueID == entryId))
             {
-                ledger.BankIgnored.Add(entry.ExternalID!);
+                foreach (var external in new[] { entry.ExternalID, entry.ToExternalID }.OfType<string>())
+                {
+                    ledger.BankIgnored.Add(external);
+                }
             }
 
             ledger.Entries.RemoveAll(entry => entry.EntryUniqueID == entryId);
@@ -281,19 +311,59 @@ internal sealed class MemoryEntryRepository(MemoryStore store, TimeProvider time
     }
 
     /// <inheritdoc />
-    public Task AttachExternalAsync(Guid userId, Guid entryId, string externalId)
+    public Task AttachExternalAsync(Guid userId, Guid entryId, string externalId, bool arriving = false)
     {
         lock (store.Gate)
         {
             var ledger = store.For(userId);
-            if (ledger.Entries.All(entry => entry.ExternalID != externalId)
-                && ledger.Entries.FirstOrDefault(entry => entry.EntryUniqueID == entryId && entry.ExternalID is null) is { } entry)
+            if (ledger.Entries.Any(entry => entry.Carries(externalId)))
             {
-                entry.ExternalID = externalId;
+                return Task.CompletedTask;
+            }
+
+            if (ledger.Entries.FirstOrDefault(entry => entry.EntryUniqueID == entryId) is { } entry)
+            {
+                if (arriving && entry.ToExternalID is null)
+                {
+                    entry.ToExternalID = externalId;
+                }
+                else if (!arriving && entry.ExternalID is null)
+                {
+                    entry.ExternalID = externalId;
+                }
             }
         }
 
         return Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public Task<bool> MakeTransferAsync(Guid userId, Guid entryId, Guid from, Guid to, string externalId, string toExternalId)
+    {
+        lock (store.Gate)
+        {
+            var ledger = store.For(userId);
+            var entry = ledger.Entries.FirstOrDefault(row => row.EntryUniqueID == entryId);
+            if (entry is null || from == to || entry.Kind == (byte)EntryKind.Transfer
+                || (entry.ExternalID != externalId && entry.ExternalID != toExternalId)
+                || ledger.Accounts.All(account => account.AccountUniqueID != from) || ledger.Accounts.All(account => account.AccountUniqueID != to)
+                || ledger.Entries.Any(row => row.EntryUniqueID != entryId && (row.Carries(externalId) || row.Carries(toExternalId))))
+            {
+                return Task.FromResult(false);
+            }
+
+            entry.Kind = (byte)EntryKind.Transfer;
+            entry.Scope = (byte)EntryScope.Personal;
+            entry.Category = null;
+            entry.ProjectUniqueID = null;
+            entry.Nights = null;
+            entry.Channel = null;
+            entry.AccountUniqueID = from;
+            entry.ToAccountUniqueID = to;
+            entry.ExternalID = externalId;
+            entry.ToExternalID = toExternalId;
+            return Task.FromResult(true);
+        }
     }
 
     /// <inheritdoc />
@@ -312,7 +382,7 @@ internal sealed class MemoryEntryRepository(MemoryStore store, TimeProvider time
                 }
 
                 // Like dbo.EntryImport: a bank transaction already here, or deleted before, stays out.
-                if (row.ExternalID is { } external && (ledger.BankIgnored.Contains(external) || ledger.Entries.Any(entry => entry.ExternalID == external)))
+                if (row.ExternalID is { } external && (ledger.BankIgnored.Contains(external) || ledger.Entries.Any(entry => entry.Carries(external))))
                 {
                     continue;
                 }
@@ -370,6 +440,7 @@ internal sealed class MemoryEntryRepository(MemoryStore store, TimeProvider time
         PlanPart = entry.PlanPart,
         PlanParts = entry.PlanParts,
         ExternalID = entry.ExternalID,
+        ToExternalID = entry.ToExternalID,
         Review = entry.Review,
     };
 }

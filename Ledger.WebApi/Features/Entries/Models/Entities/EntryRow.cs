@@ -84,6 +84,15 @@ public sealed class EntryRow
     [JsonPropertyName("rv")]
     public bool? Review { get; set; }
 
+    /// <summary>Gets or sets, on a transfer between two connected bank accounts, the bank's id of the arriving side.</summary>
+    [JsonPropertyName("tx")]
+    public string? ToExternalID { get; set; }
+
+    /// <summary>Gets a value indicating whether a bank id is this one's, on either side.</summary>
+    /// <param name="externalId">The bank's id.</param>
+    /// <returns>True when it is.</returns>
+    public bool Carries(string externalId) => ExternalID == externalId || ToExternalID == externalId;
+
     /// <summary>Gets the day as a date.</summary>
     [JsonIgnore]
     public DateOnly Day => DateOnly.FromDateTime(EntryDate);

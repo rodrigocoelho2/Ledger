@@ -148,6 +148,9 @@ public sealed class BankSyncDTO
     /// <summary>Gets or sets the entries written by hand that the bank confirmed.</summary>
     public int Matched { get; set; }
 
+    /// <summary>Gets or sets the moves between two connected accounts that became one transfer.</summary>
+    public int Transfers { get; set; }
+
     /// <summary>Gets or sets the link after the sync.</summary>
     public BankLinkDTO? Link { get; set; }
 }

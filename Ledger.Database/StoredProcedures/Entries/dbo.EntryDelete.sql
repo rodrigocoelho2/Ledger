@@ -14,13 +14,14 @@ BEGIN
     BEGIN TRANSACTION;
 
     INSERT INTO [dbo].[BankIgnore] ([UserID], [ExternalID])
-    SELECT e.[UserID], e.[ExternalID]
+    SELECT DISTINCT e.[UserID], x.[ExternalID]
     FROM [dbo].[Entry] e
     INNER JOIN [dbo].[User] u ON u.[UserID] = e.[UserID]
+    CROSS APPLY (VALUES (e.[ExternalID]), (e.[ToExternalID])) AS x ([ExternalID])
     WHERE u.[UserUniqueID] = @UserUniqueID
       AND e.[EntryUniqueID] = @EntryUniqueID
-      AND e.[ExternalID] IS NOT NULL
-      AND NOT EXISTS (SELECT 1 FROM [dbo].[BankIgnore] i WHERE i.[UserID] = e.[UserID] AND i.[ExternalID] = e.[ExternalID]);
+      AND x.[ExternalID] IS NOT NULL
+      AND NOT EXISTS (SELECT 1 FROM [dbo].[BankIgnore] i WHERE i.[UserID] = e.[UserID] AND i.[ExternalID] = x.[ExternalID]);
 
     DELETE e
     FROM [dbo].[Entry] e
