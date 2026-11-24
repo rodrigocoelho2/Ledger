@@ -566,3 +566,32 @@ dialog.sheet::backdrop { background: var(--shade); backdrop-filter: blur(4px); }
   .chips a, .seg a, .seg button { flex: none; white-space: nowrap; }
 }
 @media (max-width: 520px) { .row-sub .tag { display: none; } }
+
+/* ---------- Instalments ---------- */
+.plan { margin-top: 18px; padding: 4px 16px 14px; border: 1px dashed var(--line-2); border-radius: 16px; }
+.plan-switch { color: var(--text); font-size: 14px; font-weight: 500; }
+.plan-body { padding-top: 2px; }
+.plan-count { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.chip-btn { min-width: 46px; min-height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 99px; background: transparent; color: var(--muted); font-family: var(--mono); font-size: 13px; }
+.chip-btn:hover { border-color: var(--line-2); color: var(--text); }
+.chip-btn[aria-pressed="true"] { border-color: var(--text); background: var(--raised-2); color: var(--text); }
+.sheet .plan-count .in-box { width: 84px; height: 40px; flex: 0 0 auto; }
+.plan-preview { margin-top: 14px; font-family: var(--mono); font-size: 13px; color: var(--out); }
+.plan-preview:empty { display: none; }
+.plan-info { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 16px; padding: 12px 14px; border-radius: 14px; background: var(--raised); }
+.plan-info b { display: block; font-size: 13.5px; font-weight: 600; }
+.plan-info span { display: block; font-size: 12px; color: var(--muted); }
+.tag.plan { color: var(--blue); border-color: color-mix(in srgb, var(--blue) 45%, transparent); }
+.tag.soon { color: var(--faint); border-style: dashed; }
+.row.ahead .row-name, .row.ahead .row-amt { opacity: .62; }
+.plan-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
+.plan-line .t { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: 14px; font-weight: 500; }
+.plan-line .t span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plan-line .s { margin-top: 2px; font-size: 12px; color: var(--faint); }
+.plan-line .r { text-align: right; white-space: nowrap; }
+.plan-line .r .num { display: block; font-size: 14px; }
+.plan-line .r small { display: block; font-size: 11px; color: var(--faint); }
+.plan-dots { display: flex; gap: 3px; margin-top: 7px; }
+.plan-dots i { width: 14px; height: 4px; border-radius: 99px; background: var(--raised-2); }
+.plan-dots i.paid { background: var(--blue); }
+.hero-net p.one-off { margin-top: 6px; font-size: 12.5px; color: var(--faint); }

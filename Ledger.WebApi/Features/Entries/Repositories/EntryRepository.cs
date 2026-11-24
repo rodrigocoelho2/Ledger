@@ -42,6 +42,12 @@ internal interface IEntryRepository
     /// <returns>A task.</returns>
     Task DeleteAsync(Guid userId, Guid entryId);
 
+    /// <summary>Deletes every instalment of a plan.</summary>
+    /// <param name="userId">The user.</param>
+    /// <param name="planKey">The plan.</param>
+    /// <returns>How many entries were deleted.</returns>
+    Task<int> DeletePlanAsync(Guid userId, Guid planKey);
+
     /// <summary>Adds many entries at once.</summary>
     /// <param name="userId">The user.</param>
     /// <param name="rows">The entries.</param>
@@ -100,6 +106,10 @@ internal sealed class EntryRepository(ISqlConnectionFactory connectionFactory) :
     /// <inheritdoc />
     public Task DeleteAsync(Guid userId, Guid entryId) =>
         ExecuteAsync("[dbo].[EntryDelete]", new { UserUniqueID = userId, EntryUniqueID = entryId });
+
+    /// <inheritdoc />
+    public Task<int> DeletePlanAsync(Guid userId, Guid planKey) =>
+        ExecuteScalarAsync<int>("[dbo].[EntryPlanDelete]", new { UserUniqueID = userId, PlanKey = planKey });
 
     /// <inheritdoc />
     public async Task<int> ImportAsync(Guid userId, IReadOnlyList<EntryRow> rows) =>
@@ -193,6 +203,11 @@ internal sealed class MemoryEntryRepository(MemoryStore store, TimeProvider time
 
             copy.EntryUniqueID = entryId.Value;
             copy.CreatedAt = ledger.Entries[index].CreatedAt;
+
+            // Like dbo.EntrySave: changing an instalment keeps it in its plan.
+            copy.PlanKey = ledger.Entries[index].PlanKey;
+            copy.PlanPart = ledger.Entries[index].PlanPart;
+            copy.PlanParts = ledger.Entries[index].PlanParts;
             ledger.Entries[index] = copy;
             return Task.FromResult<Guid?>(copy.EntryUniqueID);
         }
@@ -207,6 +222,15 @@ internal sealed class MemoryEntryRepository(MemoryStore store, TimeProvider time
         }
 
         return Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public Task<int> DeletePlanAsync(Guid userId, Guid planKey)
+    {
+        lock (store.Gate)
+        {
+            return Task.FromResult(store.For(userId).Entries.RemoveAll(entry => entry.PlanKey == planKey));
+        }
     }
 
     /// <inheritdoc />
@@ -264,6 +288,9 @@ internal sealed class MemoryEntryRepository(MemoryStore store, TimeProvider time
         Nights = entry.Nights,
         Channel = entry.Channel,
         CreatedAt = entry.CreatedAt,
+        PlanKey = entry.PlanKey,
+        PlanPart = entry.PlanPart,
+        PlanParts = entry.PlanParts,
     };
 }
 

@@ -62,6 +62,18 @@ public enum AccountKind
 }
 
 /// <summary>
+/// When the instalments after the first one are paid. The numbers travel in requests: never renumber them.
+/// </summary>
+public enum InstalmentRule
+{
+    /// <summary>On the first business day of each month (weekends and Portuguese national holidays skipped).</summary>
+    FirstBusinessDay = 1,
+
+    /// <summary>On the same day of each month as the first one (the last day for a shorter month).</summary>
+    SameDay = 2,
+}
+
+/// <summary>
 /// Where a buy-and-sell project stands.
 /// </summary>
 public enum ProjectState

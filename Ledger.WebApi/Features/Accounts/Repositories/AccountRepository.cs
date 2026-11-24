@@ -1,5 +1,6 @@
 using Ledger.Library.Enums;
 using Ledger.WebApi.Extensions.Data;
+using Ledger.WebApi.Extensions.Time;
 using Ledger.WebApi.Features.Accounts.Models.Entities;
 using Ledger.WebApi.Features.Accounts.Services;
 
@@ -10,7 +11,7 @@ namespace Ledger.WebApi.Features.Accounts.Repositories;
 /// </summary>
 internal interface IAccountRepository
 {
-    /// <summary>Lists the accounts in the person's order, each with its balance.</summary>
+    /// <summary>Lists the accounts in the person's order, each with its balance today (instalments still to come left out).</summary>
     /// <param name="userId">The user.</param>
     /// <returns>The accounts.</returns>
     Task<List<AccountRow>> ListAsync(Guid userId);
@@ -41,10 +42,11 @@ internal interface IAccountRepository
 /// The accounts in SQL Server (stored procedures in Ledger.Database/StoredProcedures/Accounts).
 /// </summary>
 /// <param name="connectionFactory">Opens connections.</param>
-internal sealed class AccountRepository(ISqlConnectionFactory connectionFactory) : RepositoryBase(connectionFactory), IAccountRepository
+/// <param name="clock">Today, for the balances.</param>
+internal sealed class AccountRepository(ISqlConnectionFactory connectionFactory, IAppClock clock) : RepositoryBase(connectionFactory), IAccountRepository
 {
     /// <inheritdoc />
-    public Task<List<AccountRow>> ListAsync(Guid userId) => QueryAsync<AccountRow>("[dbo].[AccountList]", new { UserUniqueID = userId });
+    public Task<List<AccountRow>> ListAsync(Guid userId) => QueryAsync<AccountRow>("[dbo].[AccountList]", new { UserUniqueID = userId, AsOf = Date(clock.Today) });
 
     /// <inheritdoc />
     public Task<Guid?> SaveAsync(Guid userId, Guid? accountId, string name, AccountKind kind, decimal openingBalance) =>
@@ -70,7 +72,8 @@ internal sealed class AccountRepository(ISqlConnectionFactory connectionFactory)
 /// The accounts in memory (demo mode).
 /// </summary>
 /// <param name="store">The memory tables.</param>
-internal sealed class MemoryAccountRepository(MemoryStore store) : IAccountRepository
+/// <param name="clock">Today, for the balances.</param>
+internal sealed class MemoryAccountRepository(MemoryStore store, IAppClock clock) : IAccountRepository
 {
     /// <inheritdoc />
     public Task<List<AccountRow>> ListAsync(Guid userId)
@@ -78,6 +81,8 @@ internal sealed class MemoryAccountRepository(MemoryStore store) : IAccountRepos
         lock (store.Gate)
         {
             var ledger = store.For(userId);
+            var today = clock.Today;
+            var happened = ledger.Entries.Where(entry => entry.Day <= today).ToList();
             var rows = ledger.Accounts
                 .OrderBy(static account => account.SortOrder)
                 .Select(account => new AccountRow
@@ -87,7 +92,7 @@ internal sealed class MemoryAccountRepository(MemoryStore store) : IAccountRepos
                     Kind = account.Kind,
                     OpeningBalance = account.OpeningBalance,
                     SortOrder = account.SortOrder,
-                    Balance = account.OpeningBalance + Balances.Movement(account.AccountUniqueID, ledger.Entries),
+                    Balance = account.OpeningBalance + Balances.Movement(account.AccountUniqueID, happened),
                 })
                 .ToList();
             return Task.FromResult(rows);

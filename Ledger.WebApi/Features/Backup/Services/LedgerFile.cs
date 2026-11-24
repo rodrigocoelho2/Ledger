@@ -32,6 +32,9 @@ internal sealed record FileProject(string Name, decimal? TargetSale, decimal? Wo
 /// <param name="Project">The project's name.</param>
 /// <param name="Nights">The nights of a booking.</param>
 /// <param name="Channel">Where a booking came from.</param>
+/// <param name="Plan">The instalment plan it belongs to (null: none).</param>
+/// <param name="PlanPart">Which instalment it is.</param>
+/// <param name="PlanParts">How many instalments the plan has.</param>
 internal sealed record FileEntry(
     DateOnly Day,
     EntryKind Kind,
@@ -43,7 +46,10 @@ internal sealed record FileEntry(
     string? ToAccount,
     string? Project,
     int? Nights,
-    string? Channel);
+    string? Channel,
+    Guid? Plan = null,
+    int? PlanPart = null,
+    int? PlanParts = null);
 
 /// <summary>Everything read from a file.</summary>
 internal sealed class FileLedger
@@ -76,7 +82,7 @@ internal static class LedgerFile
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
-    private static readonly string[] Header = ["date", "kind", "description", "category", "scope", "account", "to_account", "project", "nights", "channel", "amount"];
+    private static readonly string[] Header = ["date", "kind", "description", "category", "scope", "account", "to_account", "project", "nights", "channel", "plan", "instalment", "amount"];
 
     // Simplified column titles (lower case, no accents or punctuation) → the column.
     private static readonly Dictionary<string, string> Columns = new(StringComparer.Ordinal)
@@ -91,6 +97,8 @@ internal static class LedgerFile
         ["project"] = "project", ["projeto"] = "project",
         ["nights"] = "nights", ["noites"] = "nights",
         ["channel"] = "channel", ["canal"] = "channel",
+        ["plan"] = "plan", ["plano"] = "plan",
+        ["instalment"] = "instalment", ["installment"] = "instalment", ["prestacao"] = "instalment",
         ["amount"] = "amount", ["valor"] = "amount", ["value"] = "amount",
     };
 
@@ -142,6 +150,8 @@ internal static class LedgerFile
                 entry.Project ?? string.Empty,
                 entry.Nights?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
                 entry.Channel ?? string.Empty,
+                entry.Plan?.ToString("N") ?? string.Empty,
+                entry.Plan is null ? string.Empty : string.Create(CultureInfo.InvariantCulture, $"{entry.PlanPart}/{entry.PlanParts}"),
                 entry.Amount.ToString("0.00", culture),
             ];
             builder.AppendJoin(';', cells.Select(Quote)).Append('\n');
@@ -175,6 +185,9 @@ internal static class LedgerFile
                 Project = entry.Project,
                 Nights = entry.Nights,
                 Channel = entry.Channel,
+                Plan = entry.Plan?.ToString("N"),
+                PlanPart = entry.PlanPart,
+                PlanParts = entry.PlanParts,
                 Amount = entry.Amount,
             })],
         },
@@ -237,6 +250,7 @@ internal static class LedgerFile
 
             var kind = Kind(Cell("kind"));
             var nights = int.TryParse(Cell("nights"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var count) && count is > 0 and <= 365 ? count : (int?)null;
+            var (plan, part, parts) = Plan(Cell("plan"), Cell("instalment"));
             ledger.Entries.Add(new FileEntry(
                 day,
                 kind,
@@ -248,10 +262,33 @@ internal static class LedgerFile
                 kind == EntryKind.Transfer ? Empty(Cell("to")) : null,
                 Empty(Cell("project")),
                 nights,
-                Empty(Short(Cell("channel"), EntryService.ChannelLength))));
+                Empty(Short(Cell("channel"), EntryService.ChannelLength)),
+                plan,
+                part,
+                parts));
         }
 
         return ledger;
+    }
+
+    /// <summary>The instalment plan of a line: its id and "2/6".</summary>
+    /// <param name="id">The plan's id.</param>
+    /// <param name="instalment">Which instalment of how many ("2/6").</param>
+    /// <returns>The plan, or nothing when either is missing or makes no sense.</returns>
+    internal static (Guid? Plan, int? Part, int? Parts) Plan(string? id, string? instalment)
+    {
+        if (!Guid.TryParse(id, out var plan) || string.IsNullOrWhiteSpace(instalment))
+        {
+            return (null, null, null);
+        }
+
+        var pieces = instalment.Split('/');
+        return pieces.Length == 2
+            && int.TryParse(pieces[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var part)
+            && int.TryParse(pieces[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var parts)
+            && parts is >= 2 and <= 60 && part >= 1 && part <= parts
+                ? (plan, part, parts)
+                : (null, null, null);
     }
 
     /// <summary>Reads a JSON file: Ledger's own backup, or what the single-file version exported.</summary>
@@ -314,6 +351,7 @@ internal static class LedgerFile
                 }
 
                 var scope = Enum.TryParse<EntryScope>(entry.Scope, true, out var part) && Enum.IsDefined(part) ? part : EntryScope.Personal;
+                var (plan, planPart, planParts) = Plan(entry.Plan, entry.PlanPart is { } p && entry.PlanParts is { } n ? string.Create(CultureInfo.InvariantCulture, $"{p}/{n}") : null);
                 ledger.Entries.Add(new FileEntry(
                     day,
                     kind,
@@ -325,7 +363,10 @@ internal static class LedgerFile
                     kind == EntryKind.Transfer ? Empty(entry.ToAccount) : null,
                     Empty(entry.Project),
                     entry.Nights is > 0 and <= 365 ? entry.Nights : null,
-                    Empty(Short(entry.Channel ?? string.Empty, EntryService.ChannelLength))));
+                    Empty(Short(entry.Channel ?? string.Empty, EntryService.ChannelLength)),
+                    plan,
+                    planPart,
+                    planParts));
             }
 
             return ledger;
@@ -615,6 +656,12 @@ internal static class LedgerFile
         public int? Nights { get; set; }
 
         public string? Channel { get; set; }
+
+        public string? Plan { get; set; }
+
+        public int? PlanPart { get; set; }
+
+        public int? PlanParts { get; set; }
 
         public decimal Amount { get; set; }
     }

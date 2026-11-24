@@ -137,6 +137,13 @@ public sealed class LedgerClient(HttpClient httpClient)
     public Task EntryDeleteAsync(string userId, string identifier) =>
         DeleteAsync($"entry?userId={Uri.EscapeDataString(userId)}&identifier={Uri.EscapeDataString(identifier)}");
 
+    /// <summary>Deletes every instalment of a plan, past and future.</summary>
+    /// <param name="userId">The user.</param>
+    /// <param name="planId">The plan.</param>
+    /// <returns>How many instalments were deleted.</returns>
+    public Task<int> EntryPlanDeleteAsync(string userId, string planId) =>
+        DeleteAsync<int>($"entry/plan?userId={Uri.EscapeDataString(userId)}&planId={Uri.EscapeDataString(planId)}");
+
     // ----- Overview -----
 
     /// <summary>The overview of a month of the person's own money.</summary>

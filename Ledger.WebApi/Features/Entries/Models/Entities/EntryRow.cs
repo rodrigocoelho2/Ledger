@@ -64,6 +64,18 @@ public sealed class EntryRow
     [JsonIgnore]
     public DateTime CreatedAt { get; set; }
 
+    /// <summary>Gets or sets the instalment plan the entry belongs to (null: none).</summary>
+    [JsonPropertyName("pk")]
+    public Guid? PlanKey { get; set; }
+
+    /// <summary>Gets or sets which instalment of the plan it is (1, 2, 3…).</summary>
+    [JsonPropertyName("pp")]
+    public short? PlanPart { get; set; }
+
+    /// <summary>Gets or sets how many instalments the plan has.</summary>
+    [JsonPropertyName("pn")]
+    public short? PlanParts { get; set; }
+
     /// <summary>Gets the day as a date.</summary>
     [JsonIgnore]
     public DateOnly Day => DateOnly.FromDateTime(EntryDate);

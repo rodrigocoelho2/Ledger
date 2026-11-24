@@ -27,7 +27,7 @@
     </div>
 
     <div class="amount">
-        <label class="eyebrow" for="entry-amount">@L.T("Amount", "Valor")</label>
+        <label class="eyebrow" for="entry-amount" data-amount-label data-plain="@L.T("Amount", "Valor")" data-total="@L.T("Total price", "Preço total")">@L.T("Amount", "Valor")</label>
         <div class="amount-row">
             <span aria-hidden="true">€</span>
             <input id="entry-amount" type="text" name="amount" inputmode="decimal" placeholder="@L.Input(0m)" value="@L.Input(entry is { Amount: > 0 } ? entry.Amount : (decimal?)null)" required autofocus="@(!editing)" />
@@ -132,10 +132,59 @@
         </div>
     </div>
 
-    <label class="field">
+    @if (!editing)
+    {
+        @* Paid in instalments: one entry per month, each on its day; the amount above is the total. *@
+        <div class="plan" data-for-kinds="Outflow">
+            <label class="check plan-switch">
+                <input type="checkbox" name="inInstalments" value="true" data-plan-toggle />
+                <span>@L.T("Pay in instalments, interest-free", "Pagar em prestações, sem juros")</span>
+            </label>
+            <div class="plan-body" data-plan hidden>
+                <div class="field" style="margin-top:6px">
+                    <span class="field-label">@L.T("How many instalments", "Quantas prestações")</span>
+                    <div class="plan-count">
+                        @foreach (var preset in new[] { 3, 6, 10, 12, 24 })
+                        {
+                            <button type="button" class="chip-btn" data-parts="@preset" aria-pressed="@(preset == 3 ? "true" : "false")">@preset</button>
+                        }
+                        <input type="number" class="in-box mono" name="instalments" min="@Instalments.Fewest" max="@Instalments.Most" value="3" inputmode="numeric" aria-label="@L.T("Number of instalments", "Número de prestações")" />
+                    </div>
+                </div>
+                <label class="field">
+                    <span>@L.T("First instalment", "Primeira prestação")</span>
+                    <input type="date" class="mono" name="firstInstalment" value="@Model.FirstInstalment.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)" />
+                </label>
+                <div class="field">
+                    <span class="field-label">@L.T("The others", "As seguintes")</span>
+                    <div class="picks" role="radiogroup">
+                        <input type="radio" name="rule" id="rule-first" value="first-business-day" checked /><label for="rule-first">@L.T("1st business day of each month", "1.º dia útil de cada mês")</label>
+                        <input type="radio" name="rule" id="rule-same" value="same-day" /><label for="rule-same">@L.T("Same day each month", "Mesmo dia de cada mês")</label>
+                    </div>
+                </div>
+                <p class="plan-preview" data-plan-preview
+                   data-one="@L.T("{n} instalments of {a}", "{n} prestações de {a}")"
+                   data-first="@L.T("{n} instalments: the first {f}, then {a}", "{n} prestações: a primeira de {f}, depois {a}")"></p>
+                <p class="note" style="margin-top:4px">@L.T("Each instalment is an entry in its month. The balance only moves on the day each one is paid.", "Cada prestação é um movimento no seu mês. O saldo só mexe no dia em que cada uma é paga.")</p>
+            </div>
+        </div>
+    }
+
+    <label class="field" data-day>
         <span>@L.T("Day", "Dia")</span>
         <input type="date" class="mono" name="date" value="@Model.Day.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)" required />
     </label>
+
+    @if (entry is { PlanId: not null, PlanPart: { } planPart, PlanParts: { } planParts })
+    {
+        <div class="plan-info">
+            <div>
+                <b>@L.T($"Instalment {planPart} of {planParts}", $"Prestação {planPart} de {planParts}")</b>
+                <span>@L.T("Changes here touch only this instalment.", "O que mudares aqui só mexe nesta prestação.")</span>
+            </div>
+            <button type="button" class="btn small danger" data-post="/entries/delete-plan" data-id="@entry.PlanId" data-confirm>@Icons.Get("trash")@L.T("Delete the whole plan", "Apagar o plano todo")</button>
+        </div>
+    }
 
     <div class="form-msg" hidden role="alert"></div>
     <div class="form-foot">

@@ -1,4 +1,5 @@
 using System.Globalization;
+using Ledger.Library.Calendar;
 using Ledger.Library.Categories;
 using Ledger.Library.Enums;
 using Ledger.Library.Money;
@@ -140,6 +141,7 @@ public sealed class EntriesController(LedgerClient apiClient, Lang lang) : Websi
             RentalEnabled = LedgerAuthentication.Rental(User),
             FlipsEnabled = LedgerAuthentication.Flips(User),
             Day = Clock.Today,
+            FirstInstalment = Instalments.DefaultFirst(Clock.Today),
             ProjectId = project,
         };
 
@@ -240,8 +242,17 @@ public sealed class EntriesController(LedgerClient apiClient, Lang lang) : Websi
             return Invalid("Amount", L.T("The amount must be a number above zero.", "O valor tem de ser um número acima de zero."));
         }
 
-        DateOnly? day = DateOnly.TryParseExact(form.Date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed) ? parsed : null;
         var kind = Enum.TryParse<EntryKind>(form.Kind, ignoreCase: true, out var wanted) ? wanted : (EntryKind?)null;
+
+        // In instalments: the amount is the total and the day is the first instalment's.
+        var instalments = form.InInstalments && kind == EntryKind.Outflow && int.TryParse(form.Instalments, NumberStyles.Integer, CultureInfo.InvariantCulture, out var count) ? count : (int?)null;
+        if (form.InInstalments && kind == EntryKind.Outflow && instalments is null)
+        {
+            return Invalid("Instalments", L.T("Say in how many instalments.", "Diz em quantas prestações."));
+        }
+
+        var dayText = instalments is null ? form.Date : form.FirstInstalment;
+        DateOnly? day = DateOnly.TryParseExact(dayText, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed) ? parsed : null;
         var scope = Enum.TryParse<EntryScope>(form.Scope, ignoreCase: true, out var part) ? part : EntryScope.Personal;
 
         return await AnswerAsync(() => Api.EntrySaveAsync(new EntrySaveRequest
@@ -260,7 +271,9 @@ public sealed class EntriesController(LedgerClient apiClient, Lang lang) : Websi
             ProjectName = scope == EntryScope.Flips && string.IsNullOrWhiteSpace(form.ProjectId) ? form.ProjectName : null,
             Nights = int.TryParse(form.Nights, NumberStyles.Integer, CultureInfo.InvariantCulture, out var nights) ? nights : null,
             Channel = form.Channel,
-        }));
+            Instalments = instalments,
+            InstalmentRule = form.Rule == "same-day" ? InstalmentRule.SameDay : InstalmentRule.FirstBusinessDay,
+        }), instalments is { } parts ? L.T($"Saved in {parts} instalments.", $"Guardado em {parts} prestações.") : null);
     }
 
     /// <summary>Deletes an entry.</summary>
@@ -270,6 +283,14 @@ public sealed class EntriesController(LedgerClient apiClient, Lang lang) : Websi
     [ValidateAntiForgeryToken]
     public Task<JsonResult> Delete([FromForm] string? id) =>
         AnswerAsync(() => Api.EntryDeleteAsync(UserId, id ?? string.Empty), L.T("Entry deleted.", "Entrada apagada."));
+
+    /// <summary>Deletes every instalment of a plan, past and future.</summary>
+    /// <param name="id">The plan.</param>
+    /// <returns>The JSON answer.</returns>
+    [HttpPost("/entries/delete-plan")]
+    [ValidateAntiForgeryToken]
+    public Task<JsonResult> DeletePlan([FromForm] string? id) =>
+        AnswerAsync(() => Api.EntryPlanDeleteAsync(UserId, id ?? string.Empty), L.T("Instalment plan deleted.", "Plano de prestações apagado."));
 }
 
 /// <summary>The fields the entry form posts, as typed.</summary>
@@ -313,6 +334,18 @@ public sealed class EntryFormFields
 
     /// <summary>Gets or sets where a booking came from.</summary>
     public string? Channel { get; set; }
+
+    /// <summary>Gets or sets whether the purchase is paid in instalments ("true" from the switch).</summary>
+    public bool InInstalments { get; set; }
+
+    /// <summary>Gets or sets in how many instalments, as typed.</summary>
+    public string? Instalments { get; set; }
+
+    /// <summary>Gets or sets the day of the first instalment (yyyy-MM-dd).</summary>
+    public string? FirstInstalment { get; set; }
+
+    /// <summary>Gets or sets when the others are paid: "first-business-day" or "same-day".</summary>
+    public string? Rule { get; set; }
 }
 
 /// <summary>

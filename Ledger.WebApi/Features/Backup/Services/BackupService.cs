@@ -233,6 +233,9 @@ internal sealed class BackupService(
             ProjectUniqueID = entry.Project is not null && projects.TryGetValue(entry.Project.Trim(), out var project) ? project : null,
             Nights = (short?)entry.Nights,
             Channel = entry.Channel,
+            PlanKey = entry.Plan,
+            PlanPart = (short?)entry.PlanPart,
+            PlanParts = (short?)entry.PlanParts,
         };
     }
 
@@ -284,7 +287,10 @@ internal sealed class BackupService(
                 row.ToAccountUniqueID is { } to && accountNames.TryGetValue(to, out var toName) ? toName : null,
                 row.ProjectUniqueID is { } project && projectNames.TryGetValue(project, out var projectName) ? projectName : null,
                 row.Nights,
-                row.Channel)));
+                row.Channel,
+                row.PlanKey,
+                row.PlanPart,
+                row.PlanParts)));
         return ledger;
     }
 }

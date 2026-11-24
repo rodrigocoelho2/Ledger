@@ -36,6 +36,9 @@ internal sealed class EntryMapper(IEnumerable<AccountRow> accounts, IEnumerable<
         ProjectName = row.ProjectUniqueID is { } project && _projects.TryGetValue(project, out var projectName) ? projectName : null,
         Nights = row.Nights,
         Channel = row.Channel,
+        PlanId = row.PlanKey?.ToString("N"),
+        PlanPart = row.PlanPart,
+        PlanParts = row.PlanParts,
     };
 
     /// <summary>Maps many rows, keeping their order.</summary>

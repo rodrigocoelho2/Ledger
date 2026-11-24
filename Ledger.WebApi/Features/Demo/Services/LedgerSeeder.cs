@@ -109,6 +109,7 @@ internal sealed class DemoSeeder(
             await capRepository.SaveAsync(userId, month, amount);
         }
 
+        var plans = demo.Entries.Where(static entry => entry.Plan is not null).Select(static entry => entry.Plan!).Distinct().ToDictionary(static plan => plan, static _ => Guid.NewGuid());
         await entryRepository.ImportAsync(userId, [.. demo.Entries.Select(entry => new EntryRow
         {
             Kind = (byte)entry.Kind,
@@ -122,6 +123,9 @@ internal sealed class DemoSeeder(
             ProjectUniqueID = entry.Project is not null && projects.TryGetValue(entry.Project, out var project) ? project : null,
             Nights = (short?)entry.Nights,
             Channel = entry.Channel,
+            PlanKey = entry.Plan is not null ? plans[entry.Plan] : null,
+            PlanPart = (short?)entry.PlanPart,
+            PlanParts = (short?)entry.PlanParts,
         })]);
 
         await settingRepository.SaveAsync(userId, Languages.Normalize(language), rentalEnabled: true, flipsEnabled: true);

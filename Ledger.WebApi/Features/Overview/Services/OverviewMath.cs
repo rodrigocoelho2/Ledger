@@ -64,6 +64,61 @@ internal static class OverviewMath
     /// <returns>The rate (negative when more went out), or null when nothing came in.</returns>
     public static decimal? SavingsRate(decimal incoming, decimal outgoing) => incoming <= 0 ? null : Share(incoming - outgoing, incoming);
 
+    /// <summary>What one-offs (buying or selling a car or a motorbike) moved in a set of entries.</summary>
+    /// <param name="entries">The entries.</param>
+    /// <returns>The one-offs that came in and that went out.</returns>
+    public static (decimal In, decimal Out) OneOffs(IEnumerable<EntryRow> entries)
+    {
+        decimal incoming = 0m, outgoing = 0m;
+        foreach (var entry in entries)
+        {
+            if (!Categories.IsOneOff(entry.Category))
+            {
+                continue;
+            }
+
+            if (entry.Kind == (byte)EntryKind.Inflow)
+            {
+                incoming += entry.Amount;
+            }
+            else if (entry.Kind == (byte)EntryKind.Outflow)
+            {
+                outgoing += entry.Amount;
+            }
+        }
+
+        return (incoming, outgoing);
+    }
+
+    /// <summary>The instalment plans with instalments after today, the next one first.</summary>
+    /// <param name="ahead">The entries after today.</param>
+    /// <param name="accounts">The account names by id.</param>
+    /// <returns>The plans.</returns>
+    public static List<PlanDTO> Plans(IEnumerable<EntryRow> ahead, IReadOnlyDictionary<Guid, string> accounts) =>
+        ahead.Where(static entry => entry.PlanKey is not null)
+            .GroupBy(static entry => entry.PlanKey!.Value)
+            .Select(plan =>
+            {
+                var parts = plan.OrderBy(static entry => entry.EntryDate).ThenBy(static entry => entry.PlanPart).ToList();
+                var next = parts[0];
+                return new PlanDTO
+                {
+                    Id = plan.Key.ToString("N"),
+                    Name = next.Name,
+                    Category = next.Category,
+                    AccountName = next.AccountUniqueID is { } account && accounts.TryGetValue(account, out var name) ? name : null,
+                    Parts = next.PlanParts ?? parts.Count,
+                    Left = parts.Count,
+                    LeftAmount = parts.Sum(static entry => entry.Amount),
+                    NextDay = next.Day,
+                    NextAmount = next.Amount,
+                    LastDay = parts[^1].Day,
+                };
+            })
+            .OrderBy(static plan => plan.NextDay)
+            .ThenBy(static plan => plan.Name, StringComparer.CurrentCulture)
+            .ToList();
+
     /// <summary>
     /// The months of the strip, oldest first: the six that end at the month we are in, moved back when the month being
     /// looked at is older than that (it then sits third from the right), or forward when it is still to come.

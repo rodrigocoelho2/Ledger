@@ -10,11 +10,15 @@ namespace Ledger.UnitTest.Demo;
 public sealed class DemoLedgerTests
 {
     [Fact]
-    public void Generate_NeverWritesAfterToday()
+    public void Generate_OnlyInstalmentsLieAfterToday()
     {
         var today = new DateOnly(2026, 11, 17);
         var demo = DemoData.Generate(today);
-        Assert.All(demo.Entries, entry => Assert.True(entry.Day <= today));
+        Assert.All(demo.Entries, entry => Assert.True(entry.Day <= today || entry.Plan is not null));
+        var laptop = demo.Entries.Where(static entry => entry.Plan is not null).ToList();
+        Assert.Equal(6, laptop.Count);
+        Assert.Equal(1199.94m, laptop.Sum(static entry => entry.Amount));
+        Assert.Equal(new DateOnly(2026, 11, 2), laptop[0].Day);
         Assert.Equal(5, demo.Accounts.Count);
         Assert.Equal([DemoData.SoldProject, DemoData.OpenProject], demo.Projects);
     }

@@ -43,6 +43,7 @@
     <Build Include="StoredProcedures\Entries\dbo.EntryGet.sql" />
     <Build Include="StoredProcedures\Entries\dbo.EntryImport.sql" />
     <Build Include="StoredProcedures\Entries\dbo.EntryList.sql" />
+    <Build Include="StoredProcedures\Entries\dbo.EntryPlanDelete.sql" />
     <Build Include="StoredProcedures\Entries\dbo.EntrySave.sql" />
     <Build Include="StoredProcedures\Entries\dbo.EntrySuggest.sql" />
     <Build Include="StoredProcedures\Entries\dbo.LedgerReset.sql" />

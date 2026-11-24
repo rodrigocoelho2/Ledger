@@ -84,8 +84,14 @@ internal sealed class OverviewService(
         var ofPrevious = personal.Where(entry => entry.Day >= previous && entry.Day < start && entry.Kind != (byte)EntryKind.Transfer).ToList();
         var (previousIn, previousOut) = OverviewMath.Totals(ofPrevious);
 
+        var (oneOffIn, oneOffOut) = OverviewMath.OneOffs(ofMonth);
+
+        // An account's change this month counts only what has happened: instalments still to come wait for their day.
+        var today = _clock.Today;
         var accounts = await _accountRepository.ListAsync(id);
-        var monthOfEveryScope = everything.Where(entry => entry.Day >= start && entry.Day <= end).ToList();
+        var monthOfEveryScope = everything.Where(entry => entry.Day >= start && entry.Day <= end && entry.Day <= today).ToList();
+        var ahead = await _entryRepository.ListAsync(id, today.AddDays(1), null);
+        var plans = OverviewMath.Plans(ahead, accounts.ToDictionary(static account => account.AccountUniqueID, static account => account.Name));
         var caps = await _capRepository.ListAsync(id);
         decimal? cap = caps.TryGetValue(start, out var amount) ? amount : null;
         var mapper = new EntryMapper(accounts, await _projectRepository.ListAsync(id));
@@ -99,7 +105,7 @@ internal sealed class OverviewService(
             In = incoming,
             Out = outgoing,
             Net = incoming - outgoing,
-            SavingsRate = OverviewMath.SavingsRate(incoming, outgoing),
+            SavingsRate = OverviewMath.SavingsRate(incoming - oneOffIn, outgoing - oneOffOut),
             PreviousNet = ofPrevious.Count == 0 ? null : previousIn - previousOut,
             NetWorth = accounts.Sum(static account => account.Balance),
             Cap = cap,
@@ -115,6 +121,10 @@ internal sealed class OverviewService(
             }).ToList(),
             Entries = mapper.Map(ofMonth.Take(LatestEntries)),
             EntryCount = ofMonth.Count,
+            OneOffIn = oneOffIn,
+            OneOffOut = oneOffOut,
+            Plans = plans,
+            PlansLeft = plans.Sum(static plan => plan.LeftAmount),
         });
     }
 

@@ -1,3 +1,4 @@
+using Ledger.Library.Calendar;
 using Ledger.Library.Categories;
 using Ledger.Library.Enums;
 using Ledger.Library.Services;
@@ -43,6 +44,12 @@ internal interface IEntryService
     /// <returns>The deleted id.</returns>
     Task<ServiceApiResponse<string>> DeleteAsync(string? userId, string? identifier);
 
+    /// <summary>Deletes every instalment of a plan, past and future.</summary>
+    /// <param name="userId">The user.</param>
+    /// <param name="planId">The plan.</param>
+    /// <returns>How many instalments were deleted.</returns>
+    Task<ServiceApiResponse<int>> DeletePlanAsync(string? userId, string? planId);
+
     /// <summary>Reads a quick-add line and fills in the rest from the last entry written with the same words.</summary>
     /// <param name="userId">The user.</param>
     /// <param name="text">The line ("9.80 lunch").</param>
@@ -87,6 +94,7 @@ internal sealed class EntryService(
     private const string FieldProject = "ProjectId";
     private const string FieldNights = "Nights";
     private const string FieldChannel = "Channel";
+    private const string FieldInstalments = "Instalments";
     private const string FieldText = "Text";
 
     private static readonly DateOnly FirstDay = new(1990, 1, 1);
@@ -284,6 +292,29 @@ internal sealed class EntryService(
             }
         }
 
+        // Paid in instalments: a new outflow only, at most five years, at least a cent each
+        var instalments = item.Instalments ?? 1;
+        var rule = item.InstalmentRule is { } chosen && Enum.IsDefined(chosen) ? chosen : InstalmentRule.FirstBusinessDay;
+        if (instalments != 1)
+        {
+            if (entryId is not null || kind != EntryKind.Outflow)
+            {
+                errors.Add(new ApiValidationError(FieldInstalments, await Globalization.TranslateAsync(nameof(TranslationKeys.InstalmentsOutflowOnly))));
+            }
+            else if (instalments is < Instalments.Fewest or > Instalments.Most)
+            {
+                errors.Add(await ErrorAsync(FieldInstalments, nameof(TranslationKeys.OutOfRange), Instalments.Fewest, Instalments.Most));
+            }
+            else if (amount < instalments * 0.01m)
+            {
+                errors.Add(await ErrorAsync(FieldAmount, nameof(TranslationKeys.AmountInvalid)));
+            }
+            else if (Instalments.Day(day, instalments - 1, rule) > _clock.Today.AddYears(10))
+            {
+                errors.Add(await ErrorAsync(FieldDate, nameof(TranslationKeys.DateInvalid)));
+            }
+        }
+
         if (errors.Count > 0)
         {
             return await InvalidAsync<EntryDTO>(errors);
@@ -292,6 +323,11 @@ internal sealed class EntryService(
         if (scope == EntryScope.Flips && kind != EntryKind.Transfer && project is null && projectName.Length > 0)
         {
             project = await _projectRepository.SaveAsync(userId, null, projectName, null, null, null);
+        }
+
+        if (instalments > 1)
+        {
+            return await SavePlanAsync();
         }
 
         var saved = await _entryRepository.SaveAsync(userId, entryId, new EntryRow
@@ -320,6 +356,37 @@ internal sealed class EntryService(
 
         Guid? FindAccount(string? text) =>
             Guid.TryParse(text, out var accountId) && accounts.Any(candidate => candidate.AccountUniqueID == accountId) ? accountId : null;
+
+        // One entry per instalment, all at once, sharing a plan key; answers with the first instalment.
+        async Task<ServiceApiResponse<EntryDTO>> SavePlanAsync()
+        {
+            var plan = Guid.NewGuid();
+            var schedule = Instalments.Schedule(amount, instalments, day, rule);
+            var rows = schedule.Select((part, index) => new EntryRow
+            {
+                Kind = (byte)kind,
+                Scope = (byte)scope,
+                Name = name,
+                Amount = part.Amount,
+                EntryDate = part.Day.ToDateTime(TimeOnly.MinValue),
+                Category = category,
+                AccountUniqueID = account,
+                ProjectUniqueID = project,
+                PlanKey = plan,
+                PlanPart = (short)(index + 1),
+                PlanParts = (short)instalments,
+            }).ToList();
+            await _entryRepository.ImportAsync(userId, rows);
+
+            var first = (await _entryRepository.ListAsync(userId, day, day)).FirstOrDefault(row => row.PlanKey == plan);
+            if (first is null)
+            {
+                return await MissingAsync<EntryDTO>(name);
+            }
+
+            var planMapper = new EntryMapper(accounts, await _projectRepository.ListAsync(userId));
+            return ServiceApiResponse<EntryDTO>.Success(planMapper.Map(first));
+        }
     }
 
     /// <inheritdoc />
@@ -337,6 +404,23 @@ internal sealed class EntryService(
 
         await _entryRepository.DeleteAsync(id, entryId);
         return ServiceApiResponse<string>.Success(Id(entryId));
+    }
+
+    /// <inheritdoc />
+    public async Task<ServiceApiResponse<int>> DeletePlanAsync(string? userId, string? planId)
+    {
+        if (!TryUser(userId, out var id) || !Guid.TryParse(planId, out var plan))
+        {
+            return await MissingAsync<int>(planId);
+        }
+
+        var deleted = await _entryRepository.DeletePlanAsync(id, plan);
+        if (deleted == 0)
+        {
+            return await MissingAsync<int>(planId);
+        }
+
+        return ServiceApiResponse<int>.Success(deleted);
     }
 
     /// <inheritdoc />

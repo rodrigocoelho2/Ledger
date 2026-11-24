@@ -63,8 +63,20 @@
   counts as spending), a big amount, the categories that fit, the account, the day.
 - **The month's list** in a ledger's margin — the day on the left of a double rule — filtered by part of life
   (Everything, Personal, Rental, Buy & Sell) and by category.
-- **31 categories** (23 out, 8 in) with their own colour, among them **Gym & fitness**, Meal allowance, and the ones only the modules
+- **33 categories** (24 out, 9 in) with their own colour, among them **Gym & fitness**, Meal allowance, and the ones only the modules
   use (cleaning, platform fees, guest supplies; purchase, transfer tax & deed, works, labour, agency…).
+
+**Instalments and one-offs**
+
+- **Pay in instalments, interest-free**: tick it on a new outflow, pick 3, 6, 10, 12, 24 (or any number up to 60), the
+  day of the first instalment and whether the others fall on **the first business day of each month** (weekends and
+  Portuguese national holidays skipped) or on the same day. Ledger writes one entry per month, split to the cent, each
+  in its own month — and the account balances only move on the day each one is paid.
+- **Instalments** on the overview: every plan with instalments still to come, the next one, how many are left and
+  what is still to pay. Open any instalment to delete the whole plan.
+- **Selling or buying a car or a motorbike** has its own categories (*Vehicle sale*, *Vehicle purchase*). They count
+  in the month like anything else, but the **savings rate leaves them out**, so one sale doesn't make a month look like
+  the best ever; the overview says what it includes.
 
 **Accounts**
 

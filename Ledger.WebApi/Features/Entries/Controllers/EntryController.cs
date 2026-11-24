@@ -97,4 +97,20 @@ internal sealed class EntryController(
 
         return (await _entryService.DeleteAsync(userId, identifier)).ToActionResult();
     }
+
+    /// <summary>Deletes every instalment of a plan, past and future.</summary>
+    /// <param name="userId">The user.</param>
+    /// <param name="planId">The plan.</param>
+    /// <returns>How many instalments were deleted.</returns>
+    [HttpDelete("plan")]
+    [ProducesResponseType<int>((int)HttpStatusCode.OK)]
+    [ProducesResponseType((int)HttpStatusCode.NotFound)]
+    [SwaggerOperation(Summary = "EntryPlanDelete", OperationId = "EntryPlanDelete")]
+    public async Task<ActionResult<int>> EntryPlanDeleteAsync(string? userId, string? planId)
+    {
+        if (_logger.IsEnabled(LogLevel.Information))
+            _logger.LogInformation("EntryPlanDelete [UserId={UserId}, PlanId={PlanId}]", userId, planId);
+
+        return (await _entryService.DeletePlanAsync(userId, planId)).ToActionResult();
+    }
 }

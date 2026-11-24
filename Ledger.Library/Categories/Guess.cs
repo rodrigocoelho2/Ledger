@@ -17,6 +17,7 @@ public static class CategoryGuess
         ("insurance", EntryKind.Outflow, ["insurance", "seguro", "seguros", "service charge", "condominio"]),
         ("bills", EntryKind.Outflow, ["electricity", "eletricidade", "luz", "water", "agua", "gas", "internet", "fibre", "fibra", "phone", "telemovel", "mobile", "meo", "vodafone", "digi", "edp", "endesa", "goldenergy", "epal"]),
         ("transport", EntryKind.Outflow, ["fuel", "petrol", "diesel", "gasolina", "gasoleo", "combustivel", "galp", "repsol", "bp", "cepsa", "uber", "bolt", "taxi", "metro", "carris", "cp", "comboio", "train", "bus", "autocarro", "navegante", "toll", "tolls", "portagem", "portagens", "via verde", "parking", "estacionamento", "car wash", "lavagem", "inspecao", "oficina", "mechanic"]),
+        ("vehicle", EntryKind.Outflow, ["car", "carro", "mota", "moto", "motorbike", "motorcycle", "scooter", "veiculo", "vehicle", "automovel"]),
         ("health", EntryKind.Outflow, ["pharmacy", "farmacia", "doctor", "medico", "consulta", "dentist", "dentista", "hospital", "clinic", "clinica", "physio", "fisioterapia", "optician", "oculista"]),
         ("gym", EntryKind.Outflow, ["gym", "ginasio", "fitness", "crossfit", "boxing", "boxe", "padel", "yoga", "pilates", "protein", "proteina", "supplements", "suplementos", "decathlon"]),
         ("leisure", EntryKind.Outflow, ["cinema", "movies", "netflix", "spotify", "disney", "hbo", "concert", "concerto", "festival", "bar", "beer", "beers", "cerveja", "cervejas", "drinks", "copos", "game", "games", "jogo", "jogos", "steam", "playstation", "nintendo", "xbox", "holiday", "ferias", "trip", "viagem", "hotel", "flight", "voo", "museum", "museu"]),
@@ -26,6 +27,7 @@ public static class CategoryGuess
         ("meal-allowance", EntryKind.Inflow, ["meal allowance", "subsidio de refeicao", "subsidio refeicao", "meal card", "cartao refeicao"]),
         ("freelance", EntryKind.Inflow, ["freelance", "invoice", "fatura", "recibo verde", "recibos verdes", "consulting", "consultoria", "side job", "biscate"]),
         ("dividends", EntryKind.Inflow, ["dividend", "dividends", "dividendo", "dividendos", "interest", "juros"]),
+        ("vehicle-sale", EntryKind.Inflow, ["car", "carro", "mota", "moto", "motorbike", "motorcycle", "scooter", "veiculo", "vehicle", "automovel"]),
         ("refunds", EntryKind.Inflow, ["refund", "reembolso", "devolucao", "cashback"]),
     ];
 

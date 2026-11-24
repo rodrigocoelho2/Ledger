@@ -49,6 +49,15 @@ public sealed class EntryDTO
 
     /// <summary>Gets or sets where a rental booking came from.</summary>
     public string? Channel { get; set; }
+
+    /// <summary>Gets or sets the instalment plan it belongs to (null: none).</summary>
+    public string? PlanId { get; set; }
+
+    /// <summary>Gets or sets which instalment it is (1, 2, 3…).</summary>
+    public int? PlanPart { get; set; }
+
+    /// <summary>Gets or sets how many instalments the plan has.</summary>
+    public int? PlanParts { get; set; }
 }
 
 /// <summary>Adds an entry (no <see cref="Id"/>) or changes one.</summary>
@@ -95,6 +104,15 @@ public sealed class EntrySaveRequest
 
     /// <summary>Gets or sets where a rental booking came from.</summary>
     public string? Channel { get; set; }
+
+    /// <summary>
+    /// Gets or sets in how many monthly instalments a new outflow is paid (empty or 1: at once). The amount is then the
+    /// total, the date is the day of the first instalment, and one entry is written for each instalment.
+    /// </summary>
+    public int? Instalments { get; set; }
+
+    /// <summary>Gets or sets when the instalments after the first are paid (empty: the first business day of each month).</summary>
+    public InstalmentRule? InstalmentRule { get; set; }
 }
 
 /// <summary>The entries of one month.</summary>

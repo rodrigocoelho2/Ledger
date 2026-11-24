@@ -69,6 +69,13 @@
         <span class="eyebrow">@L.T($"Net for {name}", $"Saldo de {name}")</span>
         <div class="figure @(data.Net < 0 ? "neg" : empty ? "faint" : "pos")">@L.Signed(data.Net)</div>
         <p>@if (against is null) { <b>@story.</b> } else { <b>@story</b> <span>— @against.</span> }</p>
+        @if (data.OneOffIn > 0 || data.OneOffOut > 0)
+        {
+            var parts = new List<string>();
+            if (data.OneOffIn > 0) { parts.Add(L.T($"{L.Money(data.OneOffIn)} from selling a vehicle", $"{L.Money(data.OneOffIn)} da venda de um veículo")); }
+            if (data.OneOffOut > 0) { parts.Add(L.T($"{L.Money(data.OneOffOut)} on buying one", $"{L.Money(data.OneOffOut)} na compra de um")); }
+            <p class="one-off">@L.T("Includes", "Inclui") @string.Join(L.T(" and ", " e "), parts). @L.T("The savings rate leaves it out.", "A taxa de poupança deixa isso de fora.")</p>
+        }
         @if (whole > 0)
         {
             <div class="split" role="img" aria-label="@L.T("In", "Entradas") @L.Money(data.In), @L.T("out", "saídas") @L.Money(data.Out)">
@@ -89,7 +96,7 @@
         <div class="rule"></div>
         <div>
             <div class="stat-line"><span class="l">@L.T("Savings rate", "Taxa de poupança")</span><span class="v">@(data.SavingsRate is { } rate && rate >= 0 ? L.Percent(rate) : "—")</span></div>
-            <div class="stat-note">@(data.Net < 0 && data.In > 0 ? L.T("Nothing kept this month: more went out than came in", "Nada guardado este mês: saiu mais do que entrou") : L.T("The share of what came in that you kept", "A parte do que entrou com que ficaste"))</div>
+            <div class="stat-note">@(data.SavingsRate is { } kept0 && kept0 < 0 ? L.T("Nothing kept this month: more went out than came in", "Nada guardado este mês: saiu mais do que entrou") : L.T("The share of what came in that you kept", "A parte do que entrou com que ficaste"))</div>
         </div>
         <div class="rule"></div>
         <div>
@@ -197,6 +204,37 @@ else
             <partial name="_Accounts" model="data.Accounts" view-data='new ViewDataDictionary(ViewData) { ["Change"] = true }' />
         </section>
     </div>
+}
+
+@if (data.Plans.Count > 0)
+{
+    <section class="panel rise rise-4">
+        <div class="panel-head">
+            <h2>@L.T("Instalments", "Prestações")</h2>
+            <span class="eyebrow">@L.T($"{L.Money(data.PlansLeft)} still to pay", $"Faltam {L.Money(data.PlansLeft)}")</span>
+        </div>
+        @foreach (var plan in data.Plans)
+        {
+            var paid = plan.Parts - plan.Left;
+            <div class="plan-line">
+                <div style="min-width:0">
+                    <div class="t"><span class="dot" style="background:@Categories.Color(plan.Category)"></span><span>@plan.Name</span></div>
+                    <div class="s">@L.T("Next on", "Próxima a") @L.Day(plan.NextDay)@(plan.AccountName is null ? string.Empty : " · " + plan.AccountName) · @L.T("last on", "última a") @L.Day(plan.LastDay)</div>
+                    <div class="plan-dots" aria-hidden="true">
+                        @for (var index = 0; index < Math.Min(plan.Parts, 24); index++)
+                        {
+                            <i class="@(index < paid ? "paid" : null)"></i>
+                        }
+                    </div>
+                </div>
+                <div class="r">
+                    <span class="num out">−@L.Money(plan.NextAmount)</span>
+                    <small>@L.T($"{plan.Left} of {plan.Parts} left · {L.Money(plan.LeftAmount)}", $"faltam {plan.Left} de {plan.Parts} · {L.Money(plan.LeftAmount)}")</small>
+                </div>
+            </div>
+        }
+        <p class="note">@L.T("Each instalment is already in its month's entries; the balances only move on the day it is paid.", "Cada prestação já está nos movimentos do seu mês; os saldos só mexem no dia em que é paga.")</p>
+    </section>
 }
 
 <section class="panel rise rise-4">

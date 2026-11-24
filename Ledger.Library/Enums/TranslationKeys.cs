@@ -47,6 +47,9 @@ public enum TranslationKeys
     /// <summary>A day that isn't one.</summary>
     DateInvalid,
 
+    /// <summary>Instalments asked for something that isn't a new outflow.</summary>
+    InstalmentsOutflowOnly,
+
     /// <summary>A category that isn't in the list, or doesn't go with the kind of entry.</summary>
     CategoryUnknown,
 

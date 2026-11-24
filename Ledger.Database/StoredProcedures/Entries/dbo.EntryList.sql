@@ -25,7 +25,10 @@ BEGIN
            p.[ProjectUniqueID],
            e.[Nights],
            e.[Channel],
-           e.[CreatedAt]
+           e.[CreatedAt],
+           e.[PlanKey],
+           e.[PlanPart],
+           e.[PlanParts]
     FROM [dbo].[Entry] e
     INNER JOIN [dbo].[User] u ON u.[UserID] = e.[UserID]
     LEFT JOIN [dbo].[Account] a ON a.[AccountID] = e.[AccountID]

@@ -11,7 +11,9 @@ namespace Ledger.Library.Categories;
 /// <param name="English">Its English name.</param>
 /// <param name="Portuguese">Its Portuguese name.</param>
 /// <param name="Color">Its colour in the charts (#RRGGBB).</param>
-public sealed record Category(string Key, EntryKind Kind, EntryScope[] Scopes, string English, string Portuguese, string Color)
+/// <param name="OneOff">A big, rare movement (buying or selling a car or a motorbike): it counts in the month like any
+/// other, but the savings rate leaves it out so one sale doesn't make a month look like the best ever.</param>
+public sealed record Category(string Key, EntryKind Kind, EntryScope[] Scopes, string English, string Portuguese, string Color, bool OneOff = false)
 {
     /// <summary>The name in a language.</summary>
     /// <param name="language">"pt" for Portuguese; anything else is English.</param>
@@ -83,6 +85,12 @@ public static class Categories
     /// <summary>The colour of a transfer, which has no category.</summary>
     public const string TransferColor = "#8B8694";
 
+    /// <summary>Buying a car, a motorbike or a scooter.</summary>
+    public const string VehiclePurchase = "vehicle";
+
+    /// <summary>Selling a car, a motorbike or a scooter.</summary>
+    public const string VehicleSale = "vehicle-sale";
+
     private static readonly EntryScope[] Personal = [EntryScope.Personal];
     private static readonly EntryScope[] Rental = [EntryScope.Rental];
     private static readonly EntryScope[] Flips = [EntryScope.Flips];
@@ -100,6 +108,7 @@ public static class Categories
         new("health", EntryKind.Outflow, Personal, "Health", "Saúde", "#E8D08A"),
         new("gym", EntryKind.Outflow, Personal, "Gym & fitness", "Ginásio & desporto", "#A8C47F"),
         new("shopping", EntryKind.Outflow, Personal, "Shopping", "Compras", "#C2B5F0"),
+        new(VehiclePurchase, EntryKind.Outflow, Personal, "Vehicle purchase", "Compra de veículo", "#6FA0B8", OneOff: true),
         new(Loans, EntryKind.Outflow, Everywhere, "Loans & repayments", "Crédito & prestações", "#D9788F"),
         new("taxes", EntryKind.Outflow, PersonalRental, "Taxes & duties", "Impostos & taxas", "#C9A27C"),
         new("insurance", EntryKind.Outflow, PersonalRental, "Service charge & insurance", "Condomínio & seguros", "#B9B2A3"),
@@ -128,6 +137,7 @@ public static class Categories
         new("dividends", EntryKind.Inflow, Personal, "Dividends & interest", "Dividendos & juros", "#C9E2A8"),
         new(Bookings, EntryKind.Inflow, Rental, "Bookings", "Reservas", "#D6B072"),
         new(Sale, EntryKind.Inflow, Flips, "Property sale", "Venda do imóvel", "#7FC7AE"),
+        new(VehicleSale, EntryKind.Inflow, Personal, "Vehicle sale", "Venda de veículo", "#5FB8C4", OneOff: true),
         new("refunds", EntryKind.Inflow, Everywhere, "Refunds", "Reembolsos", "#9CC3E6"),
         new(OtherIncome, EntryKind.Inflow, Everywhere, "Other income", "Outras entradas", "#8B8694"),
     ];
@@ -153,6 +163,11 @@ public static class Categories
     /// <param name="kind">Outflow or inflow.</param>
     /// <returns>"other" or "other-income".</returns>
     public static string Fallback(EntryKind kind) => kind == EntryKind.Inflow ? OtherIncome : Other;
+
+    /// <summary>Whether a category is a big, rare movement that the savings rate leaves out.</summary>
+    /// <param name="key">The category key.</param>
+    /// <returns>True for a one-off.</returns>
+    public static bool IsOneOff(string? key) => key is not null && Find(key) is { OneOff: true };
 
     /// <summary>The name of a category in a language (the key itself when it isn't in the list).</summary>
     /// <param name="key">The key.</param>

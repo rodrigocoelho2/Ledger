@@ -3,8 +3,9 @@
     // One line of the ledger: the day in the margin, what it was, where it belongs, and the amount.
     var tags = ViewData["Tags"] is true;
     var edit = L.T("Change", "Alterar") + " " + Model.Name;
+    var ahead = Model.Date > Clock.Today;
 }
-<div class="row">
+<div class="row@(ahead ? " ahead" : string.Empty)">
     <div class="row-date"><b>@Model.Date.Day.ToString("00")</b>@L.MonthShort(Model.Date).ToUpperInvariant()</div>
     <button type="button" class="row-main" data-entry="id=@Model.Id" aria-label="@edit">
         <span class="row-name">@Model.Name</span>
@@ -22,6 +23,14 @@
                 if (Model.ProjectName is not null) { parts.Add(Model.ProjectName); }
                 <span class="dot" style="background:@Categories.Color(Model.Category)"></span>
                 <span>@string.Join(" · ", parts)</span>
+            }
+            @if (Model is { PlanPart: { } planPart, PlanParts: { } planParts })
+            {
+                <span class="tag plan">@planPart/@planParts</span>
+            }
+            @if (ahead)
+            {
+                <span class="tag soon">@L.T("scheduled", "agendado")</span>
             }
             @if (tags && Model.Scope == EntryScope.Rental)
             {

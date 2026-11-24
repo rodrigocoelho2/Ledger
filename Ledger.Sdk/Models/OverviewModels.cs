@@ -56,7 +56,7 @@ public sealed class OverviewDTO
     /// <summary>Gets or sets what was left (negative: more went out than came in).</summary>
     public decimal Net { get; set; }
 
-    /// <summary>Gets or sets the share of what came in that was kept (null: nothing came in).</summary>
+    /// <summary>Gets or sets the share of what came in that was kept, one-offs left out (null: nothing came in).</summary>
     public decimal? SavingsRate { get; set; }
 
     /// <summary>Gets or sets what the month before came to (null: it has no entries).</summary>
@@ -88,6 +88,54 @@ public sealed class OverviewDTO
 
     /// <summary>Gets or sets how many entries the month has.</summary>
     public int EntryCount { get; set; }
+
+    /// <summary>Gets or sets what came in this month from one-offs (selling a car or a motorbike).</summary>
+    public decimal OneOffIn { get; set; }
+
+    /// <summary>Gets or sets what went out this month on one-offs (buying a car or a motorbike).</summary>
+    public decimal OneOffOut { get; set; }
+
+    /// <summary>Gets or sets the instalment plans with instalments still to come, the next one first.</summary>
+    public List<PlanDTO> Plans { get; set; } = [];
+
+    /// <summary>Gets or sets what is still to pay across those plans.</summary>
+    public decimal PlansLeft { get; set; }
+}
+
+/// <summary>
+/// A purchase paid in instalments, from today on.
+/// </summary>
+public sealed class PlanDTO
+{
+    /// <summary>Gets or sets the plan's id.</summary>
+    public string Id { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets what was bought.</summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the category key.</summary>
+    public string? Category { get; set; }
+
+    /// <summary>Gets or sets the account the instalments come out of.</summary>
+    public string? AccountName { get; set; }
+
+    /// <summary>Gets or sets how many instalments the plan has.</summary>
+    public int Parts { get; set; }
+
+    /// <summary>Gets or sets how many are still to come.</summary>
+    public int Left { get; set; }
+
+    /// <summary>Gets or sets what is still to pay.</summary>
+    public decimal LeftAmount { get; set; }
+
+    /// <summary>Gets or sets the day of the next instalment.</summary>
+    public DateOnly NextDay { get; set; }
+
+    /// <summary>Gets or sets the amount of the next instalment.</summary>
+    public decimal NextAmount { get; set; }
+
+    /// <summary>Gets or sets the day of the last instalment.</summary>
+    public DateOnly LastDay { get; set; }
 }
 
 /// <summary>Sets the spending cap of a month, or removes it.</summary>

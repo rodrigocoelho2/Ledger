@@ -1,8 +1,8 @@
 /*
     EntrySave
     Adds an entry (NULL @EntryUniqueID) or changes one. The accounts and the project are looked up among this person's
-    own; one that isn't theirs is left empty. Returns the entry's identifier, or NULL when the entry to change isn't
-    this person's.
+    own; one that isn't theirs is left empty. Changing an instalment keeps it in its plan. Returns the entry's identifier,
+    or NULL when the entry to change isn't this person's.
 */
 CREATE PROCEDURE [dbo].[EntrySave]
     @UserUniqueID      UNIQUEIDENTIFIER,

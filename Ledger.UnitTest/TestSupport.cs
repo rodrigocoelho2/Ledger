@@ -51,7 +51,7 @@ internal sealed class Harness
         context.Request.Headers.AcceptLanguage = language;
         var globalization = new GlobalizationHelper(new HttpContextAccessor { HttpContext = context });
 
-        Accounts = new MemoryAccountRepository(Store);
+        Accounts = new MemoryAccountRepository(Store, Clock);
         Entries = new MemoryEntryRepository(Store, time);
         Projects = new MemoryProjectRepository(Store, time);
         Caps = new MemoryCapRepository(Store);

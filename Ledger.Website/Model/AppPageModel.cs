@@ -157,6 +157,9 @@ public sealed class EntryFormModel
     /// <summary>Gets or sets the day the form opens on.</summary>
     public DateOnly Day { get; set; }
 
+    /// <summary>Gets or sets the day the first instalment is offered on: the first business day of next month.</summary>
+    public DateOnly FirstInstalment { get; set; }
+
     /// <summary>Gets or sets the person's accounts.</summary>
     public List<AccountDTO> Accounts { get; set; } = [];
 

@@ -15,6 +15,9 @@ CREATE TABLE [dbo].[Entry]
     [Nights]        SMALLINT         NULL,
     [Channel]       NVARCHAR (40)    NULL,
     [CreatedAt]     DATETIME2 (3)    NOT NULL CONSTRAINT [DF_Entry_CreatedAt] DEFAULT (SYSUTCDATETIME()),
+    [PlanKey]       UNIQUEIDENTIFIER NULL,
+    [PlanPart]      SMALLINT         NULL,
+    [PlanParts]     SMALLINT         NULL,
     CONSTRAINT [PK_Entry] PRIMARY KEY CLUSTERED ([EntryID] ASC),
     CONSTRAINT [UQ_Entry_EntryUniqueID] UNIQUE NONCLUSTERED ([EntryUniqueID] ASC),
     CONSTRAINT [FK_Entry_User] FOREIGN KEY ([UserID]) REFERENCES [dbo].[User] ([UserID]),
@@ -36,5 +39,8 @@ GO
 CREATE NONCLUSTERED INDEX [IX_Entry_ToAccount] ON [dbo].[Entry] ([ToAccountID] ASC) INCLUDE ([Kind], [Amount]) WHERE [ToAccountID] IS NOT NULL;
 GO
 
-EXECUTE sp_addextendedproperty @name = N'MS_Description', @value = N'Every line of the ledger. Kind 1 outflow, 2 inflow, 3 transfer between two accounts (AccountID to ToAccountID). Scope says which part of life it belongs to: 1 personal, 2 short-term rental, 3 buy and sell (then ProjectID is the property). Amount is always positive; the Kind gives the direction. Category is a key of the fixed list in Ledger.Library (NULL on transfers). A rental booking is an inflow with Nights (EntryDate is the check-in) and the Channel it came through. Deleting an account or a project leaves its entries here with the link emptied.',
+CREATE NONCLUSTERED INDEX [IX_Entry_Plan] ON [dbo].[Entry] ([UserID] ASC, [PlanKey] ASC) WHERE [PlanKey] IS NOT NULL;
+GO
+
+EXECUTE sp_addextendedproperty @name = N'MS_Description', @value = N'Every line of the ledger. Kind 1 outflow, 2 inflow, 3 transfer between two accounts (AccountID to ToAccountID). Scope says which part of life it belongs to: 1 personal, 2 short-term rental, 3 buy and sell (then ProjectID is the property). Amount is always positive; the Kind gives the direction. Category is a key of the fixed list in Ledger.Library (NULL on transfers). A rental booking is an inflow with Nights (EntryDate is the check-in) and the Channel it came through. Deleting an account or a project leaves its entries here with the link emptied. A purchase paid in instalments is one entry per instalment sharing a PlanKey, each with its PlanPart (1, 2, 3…) of PlanParts; they are dated on the day each one is paid, so some lie in the future.',
     @level0type = N'SCHEMA', @level0name = N'dbo', @level1type = N'TABLE', @level1name = N'Entry';

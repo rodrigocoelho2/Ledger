@@ -201,6 +201,58 @@
         };
         form.addEventListener('change', sync);
         sync();
+        wirePlan(form);
+    }
+
+    /* ---------- Instalments in the entry form ---------- */
+    // "1.234,56", "1,234.56", "9,80" and "9.80" all read as amounts, like the server does.
+    function amountOf(text) {
+        var t = String(text || '').replace(/[^0-9.,]/g, '');
+        if (!/[0-9]/.test(t)) return NaN;
+        var comma = t.lastIndexOf(','), dot = t.lastIndexOf('.');
+        if (comma >= 0 && dot >= 0) {
+            var mark = comma > dot ? ',' : '.';
+            t = t.split(mark === ',' ? '.' : ',').join('').replace(mark, '.');
+        } else if (comma >= 0 || dot >= 0) {
+            var sep = comma >= 0 ? ',' : '.', pieces = t.split(sep);
+            var thousands = pieces.length > 2 || (pieces[1].length === 3 && pieces[0] !== '0' && pieces[0] !== '');
+            t = thousands ? pieces.join('') : pieces.join('.');
+        }
+        return parseFloat(t);
+    }
+
+    function wirePlan(form) {
+        var toggle = form.querySelector('[data-plan-toggle]');
+        if (!toggle) return;
+        var body = form.querySelector('[data-plan]');
+        var day = form.querySelector('[data-day]');
+        var label = form.querySelector('[data-amount-label]');
+        var count = form.querySelector('input[name=instalments]');
+        var amount = form.querySelector('input[name=amount]');
+        var preview = form.querySelector('[data-plan-preview]');
+        var money = new Intl.NumberFormat(root.lang === 'pt' ? 'pt-PT' : 'en-IE', { style: 'currency', currency: 'EUR' });
+
+        var update = function () {
+            var on = toggle.checked && checked(form, 'kind') === 'Outflow';
+            body.hidden = !toggle.checked;
+            if (day) day.hidden = on;
+            if (label) label.textContent = label.getAttribute(on ? 'data-total' : 'data-plain');
+            var n = parseInt(count.value, 10);
+            form.querySelectorAll('[data-parts]').forEach(function (chip) { chip.setAttribute('aria-pressed', chip.getAttribute('data-parts') === String(n) ? 'true' : 'false'); });
+            var total = amountOf(amount.value);
+            if (!on || !(n >= 2 && n <= 60) || !(total > 0)) { preview.textContent = ''; return; }
+            var cents = Math.round(total * 100), part = Math.floor(cents / n), first = part + (cents - part * n);
+            var text = first === part ? preview.getAttribute('data-one') : preview.getAttribute('data-first');
+            preview.textContent = text.replace('{n}', n).replace('{a}', money.format(part / 100)).replace('{f}', money.format(first / 100));
+        };
+
+        form.querySelectorAll('[data-parts]').forEach(function (chip) {
+            chip.addEventListener('click', function () { count.value = chip.getAttribute('data-parts'); update(); });
+        });
+        form.addEventListener('change', update);
+        count.addEventListener('input', update);
+        amount.addEventListener('input', update);
+        update();
     }
 
     /* ---------- Forms that answer without a reload ---------- */

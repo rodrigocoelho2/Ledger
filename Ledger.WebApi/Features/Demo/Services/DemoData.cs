@@ -1,3 +1,4 @@
+using Ledger.Library.Calendar;
 using Ledger.Library.Enums;
 
 namespace Ledger.WebApi.Features.Demo.Services;
@@ -20,6 +21,9 @@ internal sealed record DemoAccount(string Name, AccountKind Kind, decimal Openin
 /// <param name="Project">The project's name.</param>
 /// <param name="Nights">The nights of a booking.</param>
 /// <param name="Channel">Where a booking came from.</param>
+/// <param name="Plan">A name shared by the instalments of one plan (null: none).</param>
+/// <param name="PlanPart">Which instalment it is.</param>
+/// <param name="PlanParts">How many instalments the plan has.</param>
 internal sealed record DemoEntry(
     DateOnly Day,
     EntryKind Kind,
@@ -31,7 +35,10 @@ internal sealed record DemoEntry(
     string? ToAccount = null,
     string? Project = null,
     int? Nights = null,
-    string? Channel = null);
+    string? Channel = null,
+    string? Plan = null,
+    int? PlanPart = null,
+    int? PlanParts = null);
 
 /// <summary>The sample ledger of demo mode.</summary>
 /// <param name="Accounts">The accounts, in order.</param>
@@ -128,6 +135,14 @@ internal static class DemoData
         Rental(entries, thisMonth);
         Projects(entries, thisMonth);
 
+        // A laptop bought in six interest-free instalments, the first on this month's first business day: the plan
+        // shows its instalments still to come (the only entries after today).
+        var laptop = Instalments.Schedule(1199.94m, 6, BusinessDays.FirstOfMonth(thisMonth), InstalmentRule.FirstBusinessDay);
+        for (var part = 0; part < laptop.Count; part++)
+        {
+            entries.Add(new DemoEntry(laptop[part].Day, EntryKind.Outflow, EntryScope.Personal, "MacBook Air", "shopping", laptop[part].Amount, Main, Plan: "laptop", PlanPart: part + 1, PlanParts: laptop.Count));
+        }
+
         return new DemoLedger(
             [
                 new DemoAccount(Main, AccountKind.Current, 1450.00m),
@@ -138,7 +153,7 @@ internal static class DemoData
             ],
             [SoldProject, OpenProject],
             caps,
-            [.. entries.Where(entry => entry.Day <= today).OrderBy(static entry => entry.Day)]);
+            [.. entries.Where(entry => entry.Day <= today || entry.Plan is not null).OrderBy(static entry => entry.Day)]);
     }
 
     private static void Personal(List<DemoEntry> entries, DateOnly month, int index)
