@@ -37,6 +37,7 @@ internal interface IOverviewService
 /// <param name="accountRepository">The accounts.</param>
 /// <param name="projectRepository">The projects.</param>
 /// <param name="capRepository">The spending caps.</param>
+/// <param name="monthService">Where the months begin.</param>
 /// <param name="clock">The clock, in the app's time zone.</param>
 /// <param name="globalizationHelper">Translations.</param>
 internal sealed class OverviewService(
@@ -44,6 +45,7 @@ internal sealed class OverviewService(
     IAccountRepository accountRepository,
     IProjectRepository projectRepository,
     ICapRepository capRepository,
+    IMonthService monthService,
     IAppClock clock,
     IGlobalizationHelper globalizationHelper) : LedgerServiceBase(globalizationHelper), IOverviewService
 {
@@ -56,6 +58,7 @@ internal sealed class OverviewService(
     private readonly IAccountRepository _accountRepository = accountRepository;
     private readonly IProjectRepository _projectRepository = projectRepository;
     private readonly ICapRepository _capRepository = capRepository;
+    private readonly IMonthService _monthService = monthService;
     private readonly IAppClock _clock = clock;
 
     /// <inheritdoc />
@@ -66,33 +69,43 @@ internal sealed class OverviewService(
             return await MissingAsync<OverviewDTO>(userId);
         }
 
-        var current = Months.Start(_clock.Today);
+        // A month follows the calendar or the salary (Settings), and is named by its first calendar day: "start" is
+        // the name, "from" and "end" the days it covers. The plan reaches over the whole strip, whichever month is asked.
+        var today = _clock.Today;
+        var asked = Months.Parse(month, today);
+        var thisMonth = Months.Start(today);
+        var plan = await _monthService.PlanAsync(
+            id,
+            (asked < thisMonth ? asked : thisMonth).AddMonths(-(OverviewMath.StripMonths + 1)),
+            Months.End(asked > thisMonth ? asked : thisMonth).AddMonths(3));
+        var current = plan.Of(today);
         var start = Months.Parse(month, current);
-        var end = Months.End(start);
+        var from = plan.Start(start);
+        var end = plan.End(start);
         var previous = start.AddMonths(-1);
         var strip = OverviewMath.Strip(start, current);
 
         // One read covers the strip, the month before and the month itself; every scope, because an account's month
         // is moved by rental and project entries too.
-        var first = strip[0] < previous ? strip[0] : previous;
-        var last = Months.End(strip[^1] > start ? strip[^1] : start);
+        var first = plan.Start(strip[0] < previous ? strip[0] : previous);
+        var last = plan.End(strip[^1] > start ? strip[^1] : start);
         var everything = await _entryRepository.ListAsync(id, first, last);
         var personal = everything.Where(static entry => entry.Scope == (byte)EntryScope.Personal).ToList();
 
-        var ofMonth = personal.Where(entry => entry.Day >= start && entry.Day <= end).ToList();
+        var ofMonth = personal.Where(entry => entry.Day >= from && entry.Day <= end).ToList();
         var (incoming, outgoing) = OverviewMath.Totals(ofMonth);
-        var ofPrevious = personal.Where(entry => entry.Day >= previous && entry.Day < start && entry.Kind != (byte)EntryKind.Transfer).ToList();
+        var previousFrom = plan.Start(previous);
+        var ofPrevious = personal.Where(entry => entry.Day >= previousFrom && entry.Day < from && entry.Kind != (byte)EntryKind.Transfer).ToList();
         var (previousIn, previousOut) = OverviewMath.Totals(ofPrevious);
 
         var (oneOffIn, oneOffOut) = OverviewMath.OneOffs(ofMonth);
 
         // An account's change this month counts only what has happened: instalments still to come wait for their day.
-        var today = _clock.Today;
         var accounts = await _accountRepository.ListAsync(id);
-        var monthOfEveryScope = everything.Where(entry => entry.Day >= start && entry.Day <= end && entry.Day <= today).ToList();
+        var monthOfEveryScope = everything.Where(entry => entry.Day >= from && entry.Day <= end && entry.Day <= today).ToList();
         var ahead = await _entryRepository.ListAsync(id, today.AddDays(1), null);
         var plans = OverviewMath.Plans(ahead, accounts.ToDictionary(static account => account.AccountUniqueID, static account => account.Name));
-        var values = accounts.Any(static account => account.ValueSource is not null) ? await _accountRepository.ValuesAsync(id, start) : [];
+        var values = accounts.Any(static account => account.ValueSource is not null) ? await _accountRepository.ValuesAsync(id, from) : [];
         var caps = await _capRepository.ListAsync(id);
         decimal? cap = caps.TryGetValue(start, out var amount) ? amount : null;
         var mapper = new EntryMapper(accounts, await _projectRepository.ListAsync(id));
@@ -100,6 +113,8 @@ internal sealed class OverviewService(
         return ServiceApiResponse<OverviewDTO>.Success(new OverviewDTO
         {
             Month = Months.Text(start),
+            From = from,
+            To = end,
             PreviousMonth = Months.Text(previous),
             NextMonth = Months.Text(start.AddMonths(1)),
             IsCurrentMonth = start == current,
@@ -111,7 +126,7 @@ internal sealed class OverviewService(
             NetWorth = accounts.Sum(static account => account.Balance),
             Cap = cap,
             CapUsed = cap is { } limit && limit > 0 ? decimal.Round(outgoing / limit, 4, MidpointRounding.AwayFromZero) : null,
-            Months = OverviewMath.Nets(strip, personal, current),
+            Months = OverviewMath.Nets(strip, personal, current, plan),
             Sources = OverviewMath.Parts(ofMonth, EntryKind.Inflow),
             Targets = OverviewMath.Parts(ofMonth, EntryKind.Outflow),
             Accounts = accounts.Select(account =>
@@ -119,7 +134,7 @@ internal sealed class OverviewService(
                 var dto = AccountService.ToDTO(account);
                 dto.MonthChange = account.ValueSource is null
                     ? Balances.Movement(account.AccountUniqueID, monthOfEveryScope)
-                    : OverviewMath.ValueChange(values.Where(value => value.AccountUniqueID == account.AccountUniqueID), start, end);
+                    : OverviewMath.ValueChange(values.Where(value => value.AccountUniqueID == account.AccountUniqueID), from, end);
                 return dto;
             }).ToList(),
             Entries = mapper.Map(ofMonth.Take(LatestEntries)),

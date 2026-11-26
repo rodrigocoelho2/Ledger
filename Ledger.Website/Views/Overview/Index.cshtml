@@ -11,6 +11,10 @@
     var empty = data.EntryCount == 0;
     var previousName = L.Month(month.AddMonths(-1));
 
+    // When months follow the salary, the days the month covers are worth saying.
+    var salaryMonth = data.From != default && data.From != month;
+    var stretch = salaryMonth ? L.Stretch(data.From, data.To) : null;
+
     // The sentence under the big number says the one thing worth knowing about the month.
     string story;
     if (empty)
@@ -45,7 +49,7 @@
 
 <div class="heading rise">
     <div>
-        <span class="eyebrow">@L.T("Overview", "Resumo")@(data.IsCurrentMonth ? " · " + L.T("this month so far", "este mês até agora") : string.Empty)</span>
+        <span class="eyebrow">@L.T("Overview", "Resumo")@(stretch is null ? string.Empty : " · " + stretch)@(data.IsCurrentMonth ? " · " + L.T("this month so far", "este mês até agora") : string.Empty)</span>
         <h1 class="title">@name <span class="year">@month.Year</span></h1>
     </div>
     <nav class="strip" aria-label="@L.T("Months", "Meses")">
@@ -54,7 +58,7 @@
         {
             var day = Lang.MonthStart(line.Month);
             var bar = !line.HasEntries ? "none" : (line.Net < 0 ? "short" : string.Empty) + (line.InProgress ? " open" : string.Empty);
-            var title = L.Month(day) + " " + day.Year + (line.HasEntries ? " · " + L.Signed(line.Net) : string.Empty);
+            var title = L.Month(day) + " " + day.Year + (line.From != default && line.From != day ? " (" + L.Stretch(line.From, line.To) + ")" : string.Empty) + (line.HasEntries ? " · " + L.Signed(line.Net) : string.Empty);
             <a href="/?month=@line.Month" aria-current="@(line.Month == data.Month ? "true" : null)" title="@title" aria-label="@title">
                 <i class="bar-v @bar" style="@(line.HasEntries ? "height:" + Charts.BarHeight(line.Net, largest) + "px" : null)"></i>
                 @L.MonthShort(day)

@@ -276,6 +276,8 @@ internal sealed partial class UserService(
         Language = Languages.Normalize(user.Language),
         RentalEnabled = user.RentalEnabled ?? false,
         FlipsEnabled = user.FlipsEnabled ?? false,
+        PayDay = user.PayDay ?? 0,
+        Payer = user.Payer,
     };
 
     private static string NewStamp() => Convert.ToHexString(RandomNumberGenerator.GetBytes(16));

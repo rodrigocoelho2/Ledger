@@ -21,7 +21,9 @@ BEGIN
            u.[DiscordName],
            s.[Language],
            s.[RentalEnabled],
-           s.[FlipsEnabled]
+           s.[FlipsEnabled],
+           s.[PayDay],
+           s.[Payer]
     FROM [dbo].[User] u
     LEFT JOIN [dbo].[Setting] s ON s.[UserID] = u.[UserID]
     WHERE u.[Username] = @Username;

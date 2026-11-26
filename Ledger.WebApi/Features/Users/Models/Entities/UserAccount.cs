@@ -43,4 +43,10 @@ public sealed class UserAccount
 
     /// <summary>Gets or sets whether the buy-and-sell module is on (null: off; dbo.Setting).</summary>
     public bool? FlipsEnabled { get; set; }
+
+    /// <summary>Gets or sets the day of the month the salary is due (null: calendar months; dbo.Setting).</summary>
+    public byte? PayDay { get; set; }
+
+    /// <summary>Gets or sets a word of the salary's bank description, the employer (null: none; dbo.Setting).</summary>
+    public string? Payer { get; set; }
 }

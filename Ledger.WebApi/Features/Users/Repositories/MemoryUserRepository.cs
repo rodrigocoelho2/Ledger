@@ -161,5 +161,7 @@ internal sealed class MemoryUserRepository(MemoryStore store, TimeProvider timeP
         Language = user.Language,
         RentalEnabled = user.RentalEnabled,
         FlipsEnabled = user.FlipsEnabled,
+        PayDay = user.PayDay,
+        Payer = user.Payer,
     };
 }

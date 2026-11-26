@@ -127,6 +127,12 @@ public sealed class EntryMonthDTO
     /// <summary>Gets or sets the month (yyyy-MM).</summary>
     public string Month { get; set; } = string.Empty;
 
+    /// <summary>Gets or sets the first day of the month (the payday when months follow the salary).</summary>
+    public DateOnly From { get; set; }
+
+    /// <summary>Gets or sets the last day of the month.</summary>
+    public DateOnly To { get; set; }
+
     /// <summary>Gets or sets the entries that pass the filters, newest first.</summary>
     public List<EntryDTO> Entries { get; set; } = [];
 

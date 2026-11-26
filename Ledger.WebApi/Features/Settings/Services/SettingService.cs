@@ -33,7 +33,12 @@ internal sealed class SettingService(
     IUserRepository userRepository,
     IGlobalizationHelper globalizationHelper) : LedgerServiceBase(globalizationHelper), ISettingService
 {
+    /// <summary>The longest word kept to recognise the salary.</summary>
+    public const int PayerLength = 64;
+
     private const string FieldLanguage = "Language";
+    private const string FieldPayDay = "PayDay";
+    private const string FieldPayer = "Payer";
 
     private readonly ISettingRepository _settingRepository = settingRepository;
     private readonly IUserRepository _userRepository = userRepository;
@@ -53,11 +58,27 @@ internal sealed class SettingService(
             return await InvalidAsync<UserDTO>([await ErrorAsync(FieldLanguage, nameof(TranslationKeys.LanguageUnknown))]);
         }
 
+        if (item.PayDay is > 31 or < 0)
+        {
+            return await InvalidAsync<UserDTO>([await ErrorAsync(FieldPayDay, nameof(TranslationKeys.OutOfRange), 1, 31)]);
+        }
+
+        // A payday of 0 or 1 goes back to calendar months; empty leaves the payday as it is.
+        var payDay = item.PayDay is { } day ? (day <= 1 ? null : (byte?)day) : user.PayDay;
+
+        var payer = item.Payer is null ? user.Payer : string.IsNullOrWhiteSpace(item.Payer) ? null : item.Payer.Trim();
+        if (payer is { Length: > PayerLength })
+        {
+            return await InvalidAsync<UserDTO>([await ErrorAsync(FieldPayer, nameof(TranslationKeys.OutOfRange), 1, PayerLength)]);
+        }
+
         await _settingRepository.SaveAsync(
             id,
             language,
             item.RentalEnabled ?? user.RentalEnabled ?? false,
-            item.FlipsEnabled ?? user.FlipsEnabled ?? false);
+            item.FlipsEnabled ?? user.FlipsEnabled ?? false,
+            payDay,
+            payDay is null ? null : payer);
 
         return ServiceApiResponse<UserDTO>.Success(UserService.ToDTO((await _userRepository.GetAsync(id)) ?? user));
     }

@@ -115,6 +115,7 @@ internal static class LedgerStartup
         services.AddSingleton<IUserService, UserService>();
         services.AddSingleton<ISettingService, SettingService>();
         services.AddSingleton<IAccountService, AccountService>();
+        services.AddSingleton<IMonthService, MonthService>();
         services.AddSingleton<IEntryService, EntryService>();
         services.AddSingleton<IOverviewService, OverviewService>();
         services.AddSingleton<IRentalService, RentalService>();

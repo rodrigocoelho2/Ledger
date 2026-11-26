@@ -7,13 +7,15 @@ namespace Ledger.WebApi.Features.Settings.Repositories;
 /// </summary>
 internal interface ISettingRepository
 {
-    /// <summary>Keeps the language and which optional modules are on.</summary>
+    /// <summary>Keeps the language, which optional modules are on and where the months begin.</summary>
     /// <param name="userId">The user.</param>
     /// <param name="language">"en" or "pt".</param>
     /// <param name="rentalEnabled">Whether the short-term rental module is on.</param>
     /// <param name="flipsEnabled">Whether the buy-and-sell module is on.</param>
+    /// <param name="payDay">The day of the month the salary is due (null: calendar months).</param>
+    /// <param name="payer">A word of the salary's bank description (null: none).</param>
     /// <returns>A task.</returns>
-    Task SaveAsync(Guid userId, string language, bool rentalEnabled, bool flipsEnabled);
+    Task SaveAsync(Guid userId, string language, bool rentalEnabled, bool flipsEnabled, byte? payDay = null, string? payer = null);
 }
 
 /// <summary>
@@ -23,8 +25,8 @@ internal interface ISettingRepository
 internal sealed class SettingRepository(ISqlConnectionFactory connectionFactory) : RepositoryBase(connectionFactory), ISettingRepository
 {
     /// <inheritdoc />
-    public Task SaveAsync(Guid userId, string language, bool rentalEnabled, bool flipsEnabled) =>
-        ExecuteAsync("[dbo].[SettingSave]", new { UserUniqueID = userId, Language = language, RentalEnabled = rentalEnabled, FlipsEnabled = flipsEnabled });
+    public Task SaveAsync(Guid userId, string language, bool rentalEnabled, bool flipsEnabled, byte? payDay = null, string? payer = null) =>
+        ExecuteAsync("[dbo].[SettingSave]", new { UserUniqueID = userId, Language = language, RentalEnabled = rentalEnabled, FlipsEnabled = flipsEnabled, PayDay = payDay, Payer = payer });
 }
 
 /// <summary>
@@ -34,7 +36,7 @@ internal sealed class SettingRepository(ISqlConnectionFactory connectionFactory)
 internal sealed class MemorySettingRepository(MemoryStore store) : ISettingRepository
 {
     /// <inheritdoc />
-    public Task SaveAsync(Guid userId, string language, bool rentalEnabled, bool flipsEnabled)
+    public Task SaveAsync(Guid userId, string language, bool rentalEnabled, bool flipsEnabled, byte? payDay = null, string? payer = null)
     {
         lock (store.Gate)
         {
@@ -43,6 +45,8 @@ internal sealed class MemorySettingRepository(MemoryStore store) : ISettingRepos
                 user.Language = language;
                 user.RentalEnabled = rentalEnabled;
                 user.FlipsEnabled = flipsEnabled;
+                user.PayDay = payDay;
+                user.Payer = payer;
             }
         }
 

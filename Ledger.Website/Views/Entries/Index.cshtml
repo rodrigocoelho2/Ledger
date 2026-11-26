@@ -18,12 +18,13 @@
     var next = Model.Month.AddMonths(1).ToString("yyyy-MM", System.Globalization.CultureInfo.InvariantCulture);
     var incoming = data.Entries.Where(static entry => entry.Kind == EntryKind.Inflow).Sum(static entry => entry.Amount);
     var outgoing = data.Entries.Where(static entry => entry.Kind == EntryKind.Outflow).Sum(static entry => entry.Amount);
+    var stretch = data.From != default && data.From != Model.Month ? L.Stretch(data.From, data.To) : null;
     var entryQuery = Model.Scope is EntryScope.Rental or EntryScope.Flips ? "scope=" + Model.Scope : string.Empty;
 }
 
 <div class="heading rise">
     <div>
-        <span class="eyebrow">@L.T("Entries", "Movimentos")</span>
+        <span class="eyebrow">@L.T("Entries", "Movimentos")@(stretch is null ? string.Empty : " · " + stretch)</span>
         <h1 class="title smaller">@name <span class="year">@Model.Month.Year</span></h1>
     </div>
     <nav class="stepper" aria-label="@L.T("Months", "Meses")">

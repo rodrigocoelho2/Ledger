@@ -35,6 +35,19 @@ public static class BusinessDays
         return day;
     }
 
+    /// <summary>The day itself if it is a business day, otherwise the one before (a salary due on a Saturday is paid on the Friday).</summary>
+    /// <param name="day">The day.</param>
+    /// <returns>The business day.</returns>
+    public static DateOnly OnOrBefore(DateOnly day)
+    {
+        while (!Is(day))
+        {
+            day = day.AddDays(-1);
+        }
+
+        return day;
+    }
+
     /// <summary>Whether a day is a Portuguese national holiday.</summary>
     /// <param name="day">The day.</param>
     /// <returns>True for a national holiday.</returns>

@@ -22,6 +22,12 @@ public sealed class MonthNetDTO
     /// <summary>Gets or sets the month (yyyy-MM).</summary>
     public string Month { get; set; } = string.Empty;
 
+    /// <summary>Gets or sets the first day of the month (the payday when months follow the salary).</summary>
+    public DateOnly From { get; set; }
+
+    /// <summary>Gets or sets the last day of the month.</summary>
+    public DateOnly To { get; set; }
+
     /// <summary>Gets or sets what came in minus what went out.</summary>
     public decimal Net { get; set; }
 
@@ -40,6 +46,12 @@ public sealed class OverviewDTO
 {
     /// <summary>Gets or sets the month (yyyy-MM).</summary>
     public string Month { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the first day of the month (the payday when months follow the salary).</summary>
+    public DateOnly From { get; set; }
+
+    /// <summary>Gets or sets the last day of the month.</summary>
+    public DateOnly To { get; set; }
 
     /// <summary>Gets or sets the month before it (yyyy-MM).</summary>
     public string PreviousMonth { get; set; } = string.Empty;

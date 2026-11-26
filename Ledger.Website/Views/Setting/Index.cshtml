@@ -225,6 +225,18 @@
 
     <section class="panel rise rise-3" id="look" style="margin-top:28px">
         <div class="panel-head"><h2>@L.T("Look and language", "Aspeto e idioma")</h2></div>
+        <form class="set-row" data-ajax action="/settings/month" method="post" autocomplete="off" id="month">
+            <div class="what">
+                <b>@L.T("Your month", "O teu mês")</b>
+                <span>@L.T("Empty, a month is the calendar month. With a payday it runs from one salary to the day before the next (a weekend or holiday moves the day back to the business day before) and takes the name of the month it mostly covers: paid on the 25th, 25 November to 23 December is December. With a word of the salary's bank description, the month opens the day the salary really came in, even when it comes early.", "Vazio, o mês é o do calendário. Com o dia do salário, vai de um salário até à véspera do seguinte (fim de semana ou feriado puxa o dia para o dia útil anterior) e tem o nome do mês onde passa mais dias: a receber a 25, de 25 de novembro a 23 de dezembro é dezembro. Com uma palavra da descrição do salário no banco, o mês abre no dia em que o salário entrou mesmo, ainda que chegue mais cedo.")</span>
+                <div class="field-row" style="margin-top:4px">
+                    <label class="field"><span>@L.T("Payday", "Dia do salário")</span><input type="number" name="payDay" min="1" max="31" inputmode="numeric" value="@(me is { PayDay: >= 2 } ? (int?)me.PayDay : null)" placeholder="@L.T("Calendar", "Calendário")" /></label>
+                    <label class="field"><span>@L.T("Salary description has", "Descrição do salário tem")</span><input type="text" name="payer" maxlength="64" value="@me?.Payer" placeholder="FINSOLUTIA" /></label>
+                </div>
+                <div class="form-msg" hidden role="alert"></div>
+            </div>
+            <div class="act"><button type="submit" class="btn small">@L.T("Save", "Guardar")</button></div>
+        </form>
         <div class="set-row">
             <div class="what"><b>@L.T("Language", "Idioma")</b><span>@L.T("Words, dates and the way amounts are written.", "Palavras, datas e a forma de escrever os valores.")</span></div>
             <div class="act">

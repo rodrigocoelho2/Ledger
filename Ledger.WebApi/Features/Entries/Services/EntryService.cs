@@ -68,12 +68,14 @@ internal interface IEntryService
 /// <param name="entryRepository">The entries.</param>
 /// <param name="accountRepository">The accounts.</param>
 /// <param name="projectRepository">The projects.</param>
+/// <param name="monthService">Where the months begin.</param>
 /// <param name="clock">The clock, in the app's time zone.</param>
 /// <param name="globalizationHelper">Translations.</param>
 internal sealed class EntryService(
     IEntryRepository entryRepository,
     IAccountRepository accountRepository,
     IProjectRepository projectRepository,
+    IMonthService monthService,
     IAppClock clock,
     IGlobalizationHelper globalizationHelper) : LedgerServiceBase(globalizationHelper), IEntryService
 {
@@ -110,6 +112,7 @@ internal sealed class EntryService(
     private readonly IEntryRepository _entryRepository = entryRepository;
     private readonly IAccountRepository _accountRepository = accountRepository;
     private readonly IProjectRepository _projectRepository = projectRepository;
+    private readonly IMonthService _monthService = monthService;
     private readonly IAppClock _clock = clock;
 
     /// <inheritdoc />
@@ -120,8 +123,13 @@ internal sealed class EntryService(
             return await MissingAsync<EntryMonthDTO>(userId);
         }
 
-        var start = Months.Parse(month, _clock.Today);
-        var rows = await _entryRepository.ListAsync(id, start, Months.End(start), scope is { } part && Enum.IsDefined(part) ? part : null);
+        // The month follows the calendar or the salary (Settings); empty is the month today is in.
+        var asked = Months.Parse(month, _clock.Today);
+        var plan = await _monthService.PlanAsync(id, asked.AddMonths(-1), Months.End(asked.AddMonths(1)));
+        var start = string.IsNullOrWhiteSpace(month) ? plan.Of(_clock.Today) : asked;
+        var from = plan.Start(start);
+        var end = plan.End(start);
+        var rows = await _entryRepository.ListAsync(id, from, end, scope is { } part && Enum.IsDefined(part) ? part : null);
         var mapper = new EntryMapper(await _accountRepository.ListAsync(id), await _projectRepository.ListAsync(id));
 
         var wanted = string.IsNullOrWhiteSpace(category) ? null : category.Trim();
@@ -136,6 +144,8 @@ internal sealed class EntryService(
         return ServiceApiResponse<EntryMonthDTO>.Success(new EntryMonthDTO
         {
             Month = Months.Text(start),
+            From = from,
+            To = end,
             Entries = mapper.Map(listed),
             Total = rows.Count,
             In = listed.Where(static row => row.Kind == (byte)EntryKind.Inflow).Sum(static row => row.Amount),

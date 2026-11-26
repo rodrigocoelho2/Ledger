@@ -79,6 +79,18 @@ public sealed class SettingController(LedgerClient apiClient, Lang lang, IOption
         await LedgerAuthentication.RefreshAsync(HttpContext, user);
     });
 
+    /// <summary>Where the months begin: the calendar, or the payday (and a word of the salary's bank description).</summary>
+    /// <param name="payDay">The day of the month the salary is due (empty or 1: calendar months).</param>
+    /// <param name="payer">A word of the salary's bank description, such as the employer (empty: the rule alone).</param>
+    /// <returns>Fine, or the messages to show.</returns>
+    [HttpPost("/settings/month")]
+    [ValidateAntiForgeryToken]
+    public Task<JsonResult> MonthStart([FromForm] int? payDay, [FromForm] string? payer) => AnswerAsync(async () =>
+    {
+        var user = await Api.SettingSaveAsync(new SettingSaveRequest { UserId = UserId, PayDay = payDay ?? 0, Payer = payer ?? string.Empty });
+        await LedgerAuthentication.RefreshAsync(HttpContext, user);
+    });
+
     /// <summary>Picks the language.</summary>
     /// <param name="language">"en" or "pt".</param>
     /// <returns>Fine, or the messages to show.</returns>

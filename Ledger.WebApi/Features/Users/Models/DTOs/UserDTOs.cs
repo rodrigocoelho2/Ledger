@@ -40,6 +40,12 @@ public sealed class UserDTO
 
     /// <summary>Gets or sets a value indicating whether the buy-and-sell module is on.</summary>
     public bool FlipsEnabled { get; set; }
+
+    /// <summary>Gets or sets the day of the month the salary is due, which opens each month (0: calendar months).</summary>
+    public int PayDay { get; set; }
+
+    /// <summary>Gets or sets a word of the salary's bank description, the employer (empty: the payday rule alone).</summary>
+    public string? Payer { get; set; }
 }
 
 /// <summary>Whether any account exists (the first visit creates the first one), and the demo account when there is one.</summary>

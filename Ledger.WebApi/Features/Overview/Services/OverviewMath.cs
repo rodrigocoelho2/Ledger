@@ -1,3 +1,4 @@
+using Ledger.Library.Calendar;
 using Ledger.Library.Categories;
 using Ledger.Library.Enums;
 using Ledger.WebApi.Features.Accounts.Models.Entities;
@@ -143,19 +144,23 @@ internal static class OverviewMath
     }
 
     /// <summary>What each month of a list came to, from the entries of the whole stretch.</summary>
-    /// <param name="months">The first day of each month.</param>
+    /// <param name="months">Each month, as named (its first calendar day).</param>
     /// <param name="entries">The entries.</param>
-    /// <param name="current">The first day of the month we are in.</param>
+    /// <param name="current">The month we are in, as named.</param>
+    /// <param name="plan">Where the months begin (empty: calendar months).</param>
     /// <returns>One line per month.</returns>
-    public static List<MonthNetDTO> Nets(IEnumerable<DateOnly> months, IReadOnlyCollection<EntryRow> entries, DateOnly current) =>
+    public static List<MonthNetDTO> Nets(IEnumerable<DateOnly> months, IReadOnlyCollection<EntryRow> entries, DateOnly current, MonthPlan? plan = null) =>
         months.Select(month =>
         {
-            var end = Months.End(month);
-            var own = entries.Where(entry => entry.Day >= month && entry.Day <= end && entry.Kind != (byte)EntryKind.Transfer).ToList();
+            var from = (plan ?? MonthPlan.Calendar).Start(month);
+            var end = (plan ?? MonthPlan.Calendar).End(month);
+            var own = entries.Where(entry => entry.Day >= from && entry.Day <= end && entry.Kind != (byte)EntryKind.Transfer).ToList();
             var (incoming, outgoing) = Totals(own);
             return new MonthNetDTO
             {
                 Month = Months.Text(month),
+                From = from,
+                To = end,
                 Net = incoming - outgoing,
                 HasEntries = own.Count > 0,
                 InProgress = month == current,

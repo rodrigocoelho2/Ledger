@@ -77,8 +77,9 @@ internal sealed class Harness
         Valuation = new ValuationService(Accounts, Users, Obol, options, Clock, NullLogger<ValuationService>.Instance);
         AccountService = new AccountService(Accounts, Valuation, options, globalization);
         BankService = new BankService(BankLinks, Accounts, Entries, Bank, options, Clock, globalization);
-        EntryService = new EntryService(Entries, Accounts, Projects, Clock, globalization);
-        OverviewService = new OverviewService(Entries, Accounts, Projects, Caps, Clock, globalization);
+        MonthService = new MonthService(Users, Entries);
+        EntryService = new EntryService(Entries, Accounts, Projects, MonthService, Clock, globalization);
+        OverviewService = new OverviewService(Entries, Accounts, Projects, Caps, MonthService, Clock, globalization);
         RentalService = new RentalService(Entries, Accounts, Projects, Clock, globalization);
         ProjectService = new ProjectService(Projects, Entries, Accounts, Clock, globalization);
         BackupService = new BackupService(Entries, Accounts, Projects, Caps, Clock, globalization);
@@ -134,6 +135,9 @@ internal sealed class Harness
 
     /// <summary>Gets the entry service.</summary>
     public IEntryService EntryService { get; }
+
+    /// <summary>Gets where the months begin.</summary>
+    public IMonthService MonthService { get; }
 
     /// <summary>Gets the overview service.</summary>
     public IOverviewService OverviewService { get; }
