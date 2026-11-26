@@ -137,6 +137,25 @@ public sealed class BankServiceTests
     }
 
     [Fact]
+    public async Task ConnectingAgain_DoesNotBringWhatIsAlreadyThere()
+    {
+        var (harness, user, main, link) = await ConnectedAsync();
+        harness.Bank.Transactions.AddRange([FakeBank.Move("t1", -20m, new DateOnly(2026, 11, 12), "LIDL"), FakeBank.Move("t2", 1500m, new DateOnly(2026, 11, 3), "EMPRESA LDA")]);
+        Assert.Equal(2, (await harness.BankService.AssignAsync(new BankAssignRequest { UserId = user, LinkId = link, AccountId = main, ImportFrom = new DateOnly(2026, 11, 1) })).Result!.Imported);
+
+        // Disconnected and connected again to bring older months: a new link, the same moves.
+        Assert.True((await harness.BankService.DeleteAsync(user, link)).IsSuccess);
+        var start = (await harness.BankService.StartAsync(new BankStartRequest { UserId = user, RedirectUrl = "https://ledger.example/bank/callback" })).Result!;
+        var again = Assert.Single((await harness.BankService.CompleteAsync(new BankCompleteRequest { UserId = user, Code = "good", State = start.State })).Result!.Links).Id;
+        Assert.NotEqual(link, again);
+        harness.Bank.Transactions.Add(FakeBank.Move("t0", -5m, new DateOnly(2026, 10, 20), "CAFE"));
+
+        var sync = (await harness.BankService.AssignAsync(new BankAssignRequest { UserId = user, LinkId = again, AccountId = main, ImportFrom = new DateOnly(2026, 10, 1) })).Result!;
+        Assert.Equal(1, sync.Imported);
+        Assert.Equal(2, (await harness.EntryService.MonthAsync(user, "2026-11", null, null)).Result!.Entries.Count);
+    }
+
+    [Fact]
     public async Task Sync_KeepsTheError_AndAnEndedConsentSaysExpired()
     {
         var (harness, user, main, link) = await ConnectedAsync();

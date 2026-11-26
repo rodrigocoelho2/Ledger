@@ -46,6 +46,37 @@ internal static partial class BankMath
     /// <returns>Eight characters and a colon.</returns>
     public static string Prefix(Guid linkId) => linkId.ToString("N")[..8] + ":";
 
+    /// <summary>An id without its link's prefix: the bank's own id, the same after the account is connected again.</summary>
+    /// <param name="externalId">Ledger's id for a move.</param>
+    /// <returns>The id the bank gave it.</returns>
+    public static string Bare(string externalId) => externalId.Length > 9 && externalId[8] == ':' ? externalId[9..] : externalId;
+
+    /// <summary>
+    /// The bank's own ids of what one account already holds from any connection, past ones included: disconnecting and
+    /// connecting again gives the link a new prefix, but the bank still calls each move the same.
+    /// </summary>
+    /// <param name="accountId">The account.</param>
+    /// <param name="entries">The entries around the days asked for.</param>
+    /// <returns>The ids, without prefix.</returns>
+    public static HashSet<string> Held(Guid accountId, IEnumerable<EntryRow> entries)
+    {
+        var held = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var entry in entries)
+        {
+            if (entry.ExternalID is { } leaving && entry.AccountUniqueID == accountId)
+            {
+                held.Add(Bare(leaving));
+            }
+
+            if (entry.ToExternalID is { } arriving && entry.ToAccountUniqueID == accountId)
+            {
+                held.Add(Bare(arriving));
+            }
+        }
+
+        return held;
+    }
+
     /// <summary>Reads the transactions of a link, oldest first, skipping what isn't booked or has no amount.</summary>
     /// <param name="linkId">The link (for the ids).</param>
     /// <param name="transactions">What the bank sent.</param>

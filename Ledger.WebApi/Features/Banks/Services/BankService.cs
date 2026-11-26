@@ -546,6 +546,7 @@ internal sealed class BankService(
 
             var around = await entryRepository.ListAsync(userId, from.AddDays(-BankMath.MatchDays), today.AddDays(BankMath.MatchDays));
             var known = around.SelectMany(static entry => new[] { entry.ExternalID, entry.ToExternalID }).OfType<string>().ToHashSet(StringComparer.Ordinal);
+            var held = BankMath.Held(accountId, around);
             var others = (await bankRepository.ListAsync(userId))
                 .Where(row => row.BankLinkUniqueID != link.BankLinkUniqueID && row.AccountUniqueID is not null)
                 .Select(static row => row.AccountUniqueID!.Value)
@@ -554,7 +555,7 @@ internal sealed class BankService(
             var matched = 0;
             var transfers = 0;
             var rows = new List<EntryRow>();
-            foreach (var move in moves.Where(move => !known.Contains(move.ExternalId)))
+            foreach (var move in moves.Where(move => !known.Contains(move.ExternalId) && !held.Contains(BankMath.Bare(move.ExternalId))))
             {
                 // Written by hand already (a transfer between two connected accounts matches on both sides).
                 if (BankMath.Match(move, accountId, around, taken) is { } entry)
