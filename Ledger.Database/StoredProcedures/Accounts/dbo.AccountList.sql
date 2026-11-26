@@ -26,8 +26,7 @@ BEGIN
            b.[BankName],
            b.[LastSyncAt] AS [BankSyncedAt],
            b.[BankBalance],
-           a.[OpeningBalance]
-               + ISNULL((SELECT SUM(CASE WHEN e.[Kind] = 2 THEN e.[Amount] ELSE -e.[Amount] END) FROM [dbo].[Entry] e WHERE e.[AccountID] = a.[AccountID] AND (@AsOf IS NULL OR e.[EntryDate] <= @AsOf)), 0)
+           ISNULL((SELECT SUM(CASE WHEN e.[Kind] = 2 THEN e.[Amount] ELSE -e.[Amount] END) FROM [dbo].[Entry] e WHERE e.[AccountID] = a.[AccountID] AND (@AsOf IS NULL OR e.[EntryDate] <= @AsOf)), 0)
                + ISNULL((SELECT SUM(e.[Amount]) FROM [dbo].[Entry] e WHERE e.[ToAccountID] = a.[AccountID] AND e.[Kind] = 3 AND (@AsOf IS NULL OR e.[EntryDate] <= @AsOf)), 0) AS [Movement]
     FROM [dbo].[Account] a
     INNER JOIN [dbo].[User] u ON u.[UserID] = a.[UserID]
