@@ -202,7 +202,9 @@ internal sealed class BankService(
             }
 
             var days = Math.Min(ConsentDays, bank.MaximumConsentValidity is { } seconds && seconds > 0 ? (int)(seconds / 86400) : 90);
-            var validUntil = new DateTimeOffset(clock.UtcNow, TimeSpan.Zero).AddDays(Math.Max(1, days));
+            // A few hours short of the bank's maximum: asking for exactly 180 days is refused (422) as soon as the clock is a
+            // second ahead of the bank's, which happens on a PC or VM whose clock drifts.
+            var validUntil = new DateTimeOffset(clock.UtcNow, TimeSpan.Zero).AddDays(Math.Max(1, days)).AddHours(-6);
             var state = State(userId, new DateTimeOffset(clock.UtcNow, TimeSpan.Zero).Add(StateLife));
             var url = await client.StartAsync(bank.Name, bank.Country, validUntil, redirect, state);
             return ServiceApiResponse<BankStartDTO>.Success(new BankStartDTO { Url = url, State = state, RedirectUrl = redirect, Paste = paste });
