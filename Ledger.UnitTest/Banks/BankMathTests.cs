@@ -56,6 +56,14 @@ public sealed class BankMathTests
     [InlineData("  MB WAY   Joana ", "MB WAY   Joana")]
     [InlineData("Continente Bom Dia", "Continente Bom Dia")]
     [InlineData("***", "")]
+    [InlineData("Pingo Docelisb 8373992 Pingo Docelisboa", "Pingo Doce")]
+    [InlineData("Fnac Ubboamado 8373992 Fnac Ubboamadora", "Fnac Ubbo")]
+    [InlineData("A. S. Galp Odi 8373992 A. S. Galp Odivelasodivelas", "A. S. Galp Odivelas")]
+    [InlineData("Real Cake 7603422/48 Real Cake 2670 457 Loures", "Real Cake")]
+    [InlineData("Continente Lou 8373992 Continente Loures257 2670-482", "Continente Loures")]
+    [InlineData("MGP VintedViln 8373992 MGP VintedVilnius", "MGP Vinted")]
+    [InlineData("Cloudflare Usd 0.8827868 Cloudflare Cloudflare.Co", "Cloudflare Cloudflare.Co")]
+    [InlineData("Dev Compra El Corte 7603422/43 El Corte Ingles Lisboa", "Devolução El Corte Ingles Lisboa")]
     public void Clean_TidiesBankDescriptions(string text, string expected)
     {
         var cleaned = BankMath.Clean(text);

@@ -16,6 +16,7 @@ using Ledger.WebApi.Features.Banks.Models.Entities;
 using Ledger.WebApi.Features.Banks.Repositories;
 using Ledger.WebApi.Features.Entries.Models.Entities;
 using Ledger.WebApi.Features.Entries.Repositories;
+using Ledger.WebApi.Features.Users.Repositories;
 using Microsoft.Extensions.Options;
 
 namespace Ledger.WebApi.Features.Banks.Services;
@@ -81,6 +82,7 @@ internal interface IBankService
 /// <param name="accountRepository">The accounts.</param>
 /// <param name="entryRepository">The entries.</param>
 /// <param name="client">Enable Banking.</param>
+/// <param name="userRepository">The users (the salary's word in Settings).</param>
 /// <param name="options">The app's options.</param>
 /// <param name="clock">The clock.</param>
 /// <param name="globalizationHelper">Translations.</param>
@@ -89,6 +91,7 @@ internal sealed class BankService(
     IAccountRepository accountRepository,
     IEntryRepository entryRepository,
     IEnableBankingClient client,
+    IUserRepository userRepository,
     IOptions<LedgerOptions> options,
     IAppClock clock,
     IGlobalizationHelper globalizationHelper) : LedgerServiceBase(globalizationHelper), IBankService
@@ -614,16 +617,30 @@ internal sealed class BankService(
         }
     }
 
-    /// <summary>A category for a bank move: what the same name had last time, else a guess from the words.</summary>
+    /// <summary>
+    /// A category for a bank move: the salary when it carries the word of Settings; else what the same name had last time
+    /// (unless that was only the fallback); else the shop or the words; else money with a person is settling up.
+    /// </summary>
     private async Task<string> CategoryAsync(Guid userId, BankMove move)
     {
+        if (move.Kind == EntryKind.Inflow
+            && (await userRepository.GetAsync(userId))?.Payer?.Trim() is { Length: > 0 } payer
+            && (move.Name.Contains(payer, StringComparison.OrdinalIgnoreCase) || move.Text.Contains(payer, StringComparison.OrdinalIgnoreCase)))
+        {
+            return Categories.Salary;
+        }
+
+        var fallback = Categories.Fallback(move.Kind);
         var last = await entryRepository.SuggestAsync(userId, move.Name);
-        if (last is not null && last.Kind == (byte)move.Kind && Categories.Find(last.Category) is { } remembered)
+        if (last is not null && last.Kind == (byte)move.Kind && Categories.Find(last.Category) is { } remembered && remembered.Key != fallback)
         {
             return remembered.Key;
         }
 
-        return CategoryGuess.For(move.Name, move.Kind) ?? CategoryGuess.For(move.Text, move.Kind) ?? Categories.Fallback(move.Kind);
+        return CategoryGuess.For(move.Name, move.Kind)
+            ?? CategoryGuess.For(move.Text, move.Kind)
+            ?? (CategoryGuess.IsPerson(move.Name, move.Kind == EntryKind.Outflow) ? (move.Kind == EntryKind.Inflow ? Categories.FriendsIn : Categories.FriendsOut) : null)
+            ?? fallback;
     }
 
     private async Task AlignToAsync(Guid userId, Guid accountId, decimal bankBalance)

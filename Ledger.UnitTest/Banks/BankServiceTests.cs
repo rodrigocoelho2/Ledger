@@ -97,7 +97,7 @@ public sealed class BankServiceTests
         Assert.Equal(2, month.ReviewCount);
         var lunch = month.Entries.Single(static entry => entry.Amount == 9.8m);
         Assert.Equal("Restaurante O Pateo", lunch.Name);
-        Assert.Equal("groceries", lunch.Category);
+        Assert.Equal("eating-out", lunch.Category);
         Assert.True(lunch.Review);
         Assert.True(lunch.FromBank);
         var fuel = month.Entries.Single(static entry => entry.Name == "Gasolina");

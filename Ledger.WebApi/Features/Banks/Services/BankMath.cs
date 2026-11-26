@@ -38,6 +38,13 @@ internal static partial class BankMath
         "SA", "MB", "EDP", "CGD", "BCP", "BPI", "CTT", "NOS", "MEO", "CP", "BP", "EMEL", "EPAL", "IKEA", "IRS", "IMI", "IUC", "AT", "SEPA", "ATM", "TPA", "UK", "EU", "PT",
     };
 
+    /// <summary>Towns a card terminal glues to the shop's name (the bank writes them without accents).</summary>
+    private static readonly string[] Towns =
+    [
+        "lisboa", "loures", "odivelas", "amadora", "oeiras", "alges", "setubal", "faro", "porto", "almada", "sintra",
+        "cascais", "cacem", "moscavide", "sacavem", "vilnius", "hilversum", "cork", "amsterdam", "brooklyn", "dublin",
+    ];
+
     /// <summary>The balance kinds, the most useful first: booked at close, booked now, expected, then available.</summary>
     private static readonly string[] BalanceOrder = ["CLBD", "ITBD", "XPCD", "OPBD", "CLAV", "ITAV", "OPAV"];
 
@@ -166,6 +173,17 @@ internal static partial class BankMath
 
         var clean = SepaTags().Replace(text, " ");
         clean = CardPrefix().Replace(clean, string.Empty);
+
+        // A card purchase as Crédito Agrícola writes it: the shop cut short, the terminal, then the shop with its town
+        // glued on ("Pingo Docelisb 8373992 Pingo Docelisboa"). Only the shop is kept: no post code, no town.
+        if (Terminal().Match(clean) is { Success: true } card)
+        {
+            var refund = clean.StartsWith("Dev ", StringComparison.OrdinalIgnoreCase);
+            clean = PostCode().Replace(card.Groups["shop"].Value, string.Empty);
+            clean = Untown(TrailingDigits().Replace(clean.TrimEnd(), string.Empty));
+            clean = refund ? "Devolução " + clean : clean;
+        }
+
         clean = Spaces().Replace(clean, " ").Trim(' ', '-', '/', '.', ',', ';', ':', '*', '#');
         if (clean.Any(char.IsLetter) && !clean.Any(char.IsLower))
         {
@@ -271,6 +289,33 @@ internal static partial class BankMath
         transaction.Debtor?.Name,
         string.Join('/', transaction.RemittanceInformation ?? [])));
 
+    /// <summary>Takes a town off the end of the last word it is glued to ("Docelisboa" → "Doce"), more than once.</summary>
+    /// <param name="text">The shop and its town.</param>
+    /// <returns>The shop.</returns>
+    public static string Untown(string text)
+    {
+        var cut = true;
+        while (cut)
+        {
+            cut = false;
+            var space = text.LastIndexOf(' ');
+            var last = text[(space + 1)..];
+            foreach (var town in Towns)
+            {
+                if (last.Length >= town.Length + 2
+                    && last.EndsWith(town, StringComparison.OrdinalIgnoreCase)
+                    && char.IsLetter(last[^(town.Length + 1)]))
+                {
+                    text = text[..(text.Length - town.Length)];
+                    cut = true;
+                    break;
+                }
+            }
+        }
+
+        return text;
+    }
+
     private static string Sha(string text) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)))[..24].ToLowerInvariant();
 
     [GeneratedRegex(@"\b(EREF|KREF|MREF|CRED|DEBT|COAM|OAMT|SVWZ|ABWA|ABWE|IBAN|BIC|PURP)\+", RegexOptions.IgnoreCase)]
@@ -281,4 +326,13 @@ internal static partial class BankMath
 
     [GeneratedRegex(@"\s+")]
     private static partial Regex Spaces();
+
+    [GeneratedRegex(@"^.{1,20}?\s(?:\d{7}(?:/\d+)?|[A-Za-z]{3}\s\d+\.\d+)\s(?<shop>.*[A-Za-z].*)$")]
+    private static partial Regex Terminal();
+
+    [GeneratedRegex(@"\d{4}[\s-]\d{3}\b.*$")]
+    private static partial Regex PostCode();
+
+    [GeneratedRegex(@"\d+$")]
+    private static partial Regex TrailingDigits();
 }

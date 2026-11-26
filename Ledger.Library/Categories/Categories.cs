@@ -79,6 +79,27 @@ public static class Categories
     /// <summary>The key outflows fall back to.</summary>
     public const string Other = "other";
 
+    /// <summary>The key of restaurants, cafés and takeaway.</summary>
+    public const string EatingOut = "eating-out";
+
+    /// <summary>The key of software and online subscriptions.</summary>
+    public const string Subscriptions = "subscriptions";
+
+    /// <summary>The key of what the bank charges (transfer and card fees).</summary>
+    public const string BankFees = "bank-fees";
+
+    /// <summary>The key of money paid to a person: a dinner split, a ticket bought for you (outflow).</summary>
+    public const string FriendsOut = "friends-out";
+
+    /// <summary>The key of money a person paid back (inflow).</summary>
+    public const string FriendsIn = "friends-in";
+
+    /// <summary>The key of buying online: Vinted, eBay, Amazon, AliExpress…</summary>
+    public const string OnlineShopping = "online-shopping";
+
+    /// <summary>The key of the salary.</summary>
+    public const string Salary = "salary";
+
     /// <summary>The key inflows fall back to.</summary>
     public const string OtherIncome = "other-income";
 
@@ -101,13 +122,17 @@ public static class Categories
     [
         // Outflows of everyday life
         new("groceries", EntryKind.Outflow, Personal, "Groceries & food", "Alimentação", "#E39468"),
+        new(EatingOut, EntryKind.Outflow, Personal, "Eating out", "Restaurantes & cafés", "#D97A5B"),
         new("home", EntryKind.Outflow, Personal, "Home & rent", "Casa & renda", "#F0B7A4"),
         new("bills", EntryKind.Outflow, PersonalRental, "Bills & utilities", "Contas & serviços", "#8FA9D9"),
+        new(Subscriptions, EntryKind.Outflow, Personal, "Subscriptions & software", "Subscrições & software", "#9C9BE0"),
+        new(BankFees, EntryKind.Outflow, Everywhere, "Bank fees", "Comissões bancárias", "#A3A0AD"),
         new("transport", EntryKind.Outflow, Personal, "Transport", "Transportes", "#7DBFCF"),
         new("leisure", EntryKind.Outflow, Personal, "Leisure", "Lazer", "#D9A8E0"),
         new("health", EntryKind.Outflow, Personal, "Health", "Saúde", "#E8D08A"),
         new("gym", EntryKind.Outflow, Personal, "Gym & fitness", "Ginásio & desporto", "#A8C47F"),
         new("shopping", EntryKind.Outflow, Personal, "Shopping", "Compras", "#C2B5F0"),
+        new(OnlineShopping, EntryKind.Outflow, Personal, "Online shopping", "Compras online", "#A99BE6"),
         new(VehiclePurchase, EntryKind.Outflow, Personal, "Vehicle purchase", "Compra de veículo", "#6FA0B8", OneOff: true),
         new(Loans, EntryKind.Outflow, Everywhere, "Loans & repayments", "Crédito & prestações", "#D9788F"),
         new("taxes", EntryKind.Outflow, PersonalRental, "Taxes & duties", "Impostos & taxas", "#C9A27C"),
@@ -128,6 +153,7 @@ public static class Categories
         new("agency", EntryKind.Outflow, Flips, "Agency & sale costs", "Mediação & venda", "#8FA9D9"),
         new("capital-gains", EntryKind.Outflow, Flips, "Capital gains tax", "Mais-valias", "#C9A27C"),
 
+        new(FriendsOut, EntryKind.Outflow, Personal, "Settling up with friends", "Acertos com amigos", "#E6A3B8"),
         new(Other, EntryKind.Outflow, Everywhere, "Other", "Outros", "#8B8694"),
 
         // Inflows
@@ -139,6 +165,7 @@ public static class Categories
         new(Sale, EntryKind.Inflow, Flips, "Property sale", "Venda do imóvel", "#7FC7AE"),
         new(VehicleSale, EntryKind.Inflow, Personal, "Vehicle sale", "Venda de veículo", "#5FB8C4", OneOff: true),
         new("refunds", EntryKind.Inflow, Everywhere, "Refunds", "Reembolsos", "#9CC3E6"),
+        new(FriendsIn, EntryKind.Inflow, Personal, "Settling up with friends", "Acertos com amigos", "#E6A3B8"),
         new(OtherIncome, EntryKind.Inflow, Everywhere, "Other income", "Outras entradas", "#8B8694"),
     ];
 

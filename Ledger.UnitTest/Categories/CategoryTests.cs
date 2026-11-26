@@ -52,8 +52,24 @@ public sealed class CategoryTests
     }
 
     [Theory]
-    [InlineData("almoço com a equipa", EntryKind.Outflow, "groceries")]
+    [InlineData("almoço com a equipa", EntryKind.Outflow, "eating-out")]
     [InlineData("Pingo Doce", EntryKind.Outflow, "groceries")]
+    [InlineData("Pingo Docelisb", EntryKind.Outflow, "groceries")]
+    [InlineData("Mcdonalds Loures", EntryKind.Outflow, "eating-out")]
+    [InlineData("Pad Port Infantado", EntryKind.Outflow, "eating-out")]
+    [InlineData("Prozis Com SA Canical", EntryKind.Outflow, "gym")]
+    [InlineData("Anthropic Claude Sub Dublin", EntryKind.Outflow, "subscriptions")]
+    [InlineData("Apple.Com/Bill", EntryKind.Outflow, "subscriptions")]
+    [InlineData("PLAYSTATIONHilversum", EntryKind.Outflow, "leisure")]
+    [InlineData("MGP Vinted", EntryKind.Outflow, "online-shopping")]
+    [InlineData("WWW.AMAZON Y79N34EX5 amzn.com/bill", EntryKind.Outflow, "online-shopping")]
+    [InlineData("Fnac Ubbo", EntryKind.Outflow, "shopping")]
+    [InlineData("Boulevard Legend", EntryKind.Outflow, "gym")]
+    [InlineData("A.S.Loures", EntryKind.Outflow, "transport")]
+    [InlineData("Ubr Pending.Uber.Com", EntryKind.Outflow, "transport")]
+    [InlineData("Cetelem", EntryKind.Outflow, "loans")]
+    [InlineData("Transferencia com cartao debit", EntryKind.Outflow, "bank-fees")]
+    [InlineData("Devolução El Corte Ingles Lisboa", EntryKind.Inflow, "refunds")]
     [InlineData("Via Verde", EntryKind.Outflow, "transport")]
     [InlineData("fuel", EntryKind.Outflow, "transport")]
     [InlineData("Ginásio", EntryKind.Outflow, "gym")]
@@ -68,6 +84,16 @@ public sealed class CategoryTests
     [InlineData("salary", EntryKind.Outflow)]
     [InlineData("", EntryKind.Inflow)]
     public void Guess_SaysNothingWhenUnsure(string text, EntryKind kind) => Assert.Null(CategoryGuess.For(text, kind));
+
+    [Theory]
+    [InlineData("Trf imediata DIANA ISABEL TOM S CABRITA", true, true)]
+    [InlineData("Margarida Monteiro Gon?Alves", false, true)]
+    [InlineData("Trf imediata SALERO LDA", true, false)]
+    [InlineData("Fin Solutia Estado", false, false)]
+    [InlineData("El Corte Ingles Lisboa", true, false)]
+    [InlineData("Cetelem", false, false)]
+    public void IsPerson_TellsPeopleFromBusinesses(string name, bool sent, bool person) =>
+        Assert.Equal(person, CategoryGuess.IsPerson(name, sent));
 
     [Fact]
     public void IsMeal_KnowsAMealOut()

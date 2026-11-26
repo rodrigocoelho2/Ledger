@@ -76,7 +76,7 @@ internal sealed class Harness
 
         Valuation = new ValuationService(Accounts, Users, Obol, options, Clock, NullLogger<ValuationService>.Instance);
         AccountService = new AccountService(Accounts, Valuation, options, globalization);
-        BankService = new BankService(BankLinks, Accounts, Entries, Bank, options, Clock, globalization);
+        BankService = new BankService(BankLinks, Accounts, Entries, Bank, Users, options, Clock, globalization);
         MonthService = new MonthService(Users, Entries);
         EntryService = new EntryService(Entries, Accounts, Projects, MonthService, Clock, globalization);
         OverviewService = new OverviewService(Entries, Accounts, Projects, Caps, MonthService, Clock, globalization);
